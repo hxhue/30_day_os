@@ -1,9 +1,9 @@
 ; haribote-os boot asm
 ; TAB=4
 
-BOOTSTRAP  EQU  0x00280000		; bootpackのロード先
-DSKCAC     EQU  0x00100000		; ディスクキャッシュの場所
-DSKCAC0    EQU  0x00008000		; ディスクキャッシュの場所（リアルモード）
+MAIN_PROGRAM  EQU  0x00280000		; bootpackのロード先
+DSKCAC        EQU  0x00100000		; ディスクキャッシュの場所
+DSKCAC0       EQU  0x00008000		; ディスクキャッシュの場所（リアルモード）
 
 ; BOOT_INFO関係
 CYLS	EQU		0x0ff0			; ブートセクタが設定する
@@ -57,7 +57,7 @@ VRAM	EQU		0x0ff8			; グラフィックバッファの開始番地
 
 ; Comment this line so nasm.exe can process the file.
 ; This was used by nask.exe.
-; [INSTRSET "i486p"]				; 486の命令まで使いたいという記述
+[INSTRSET "i486p"]				; 486の命令まで使いたいという記述
 
 		LGDT	[GDTR0]			; 暫定GDTを設定
 		MOV		EAX,CR0
@@ -75,8 +75,8 @@ pipelineflush:
 
 ; bootpackの転送
 
-		MOV		ESI,bootstrap_c	; 転送元
-		MOV		EDI,BOOTSTRAP	; 転送先
+		MOV		ESI,entry_point	 ; 転送元
+		MOV		EDI,MAIN_PROGRAM ; 転送先
 		MOV		ECX,512*1024/4
 		CALL	memcpy
 
@@ -104,7 +104,7 @@ pipelineflush:
 
 ; bootpackの起動
 
-		MOV		EBX,BOOTSTRAP
+		MOV		EBX,MAIN_PROGRAM
 		MOV		ECX,[EBX+16]
 		ADD		ECX,3			; ECX += 3;
 		SHR		ECX,2			; ECX /= 4;
@@ -145,4 +145,4 @@ GDTR0:
 		DD		GDT0
 
 		ALIGNB	16
-bootstrap_c:
+entry_point:

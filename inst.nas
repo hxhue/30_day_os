@@ -1,16 +1,51 @@
-; fn.asm
+; inst.nas
 
 [FORMAT "WCOFF"]                
 [INSTRSET "i486p"]              
 [BITS 32]                       
-[FILE "fn.asm"]            ; Name of this file
+[FILE "inst.nas"]           ; Name of this file
 
     GLOBAL _asm_hlt,  _asm_cli,   _asm_sti
     GLOBAL _asm_in8,  _asm_in16,  _asm_in32
     GLOBAL _asm_out8, _asm_out16, _asm_out32
     GLOBAL _asm_load_eflags,      _asm_store_eflags
+    GLOBAL _asm_load_gdtr,        _asm_load_idtr
+    GLOBAL _asm_int_handler0x21,  _asm_int_handler0x27
+    GLOBAL _asm_int_handler0x2c
+
+    EXTERN _int_handler0x21, _int_handler0x27, _int_handler0x2c
 
 [SECTION .text]
+
+; x86 default calling convention:
+; +----------------------+
+; |         ...          |
+; +----------------------+
+; |        Arg 0         |
+; +----------------------+ <---- esp + 4
+; |  Return address: 32  |
+; +----------------------+ <---- esp
+; 
+; If the callee uses ebp to create a stack frame:
+;   1 push  ebp
+;   2 mov   ebp, esp
+;   ...
+;   3 leave
+;   4 ret
+; Between line 2 and 3:
+; +----------------------+
+; |         ...          |
+; +----------------------+
+; |        Arg 0         |
+; +----------------------+ <---- ebp + 8
+; |  Return address: 32  |
+; +----------------------+ <---- ebp + 4
+; |      Saved ebp       | 
+; +----------------------+ <---- ebp (now equal to esp)
+;
+; If an argument less than 4 bytes is passed, 4 bytes are still occupied. 
+; (The argument will be promoted to a 4-byte integer.)
+
 _asm_hlt:                  ; void asm_hlt(void)
     HLT
     RET
@@ -68,3 +103,91 @@ _asm_store_eflags:         ; void asm_store_eflags(int eflags)
     PUSH   EAX
     POPFD        
     RET
+
+; When operand is 32-bit, LGDT/LIDT needs a 6-byte argument stored in memory.
+; The lower 2 bytes are used as limit, and higher 4 bytes are used as base address.
+; Ref: https://www.felixcloutier.com/x86/lgdt:lidt
+
+; _asm_load_gdtr:            ; void asm_load_gdtr(int limit, int addr)
+;     MOV   AX, [ESP+4]      ; limit
+;     MOV   [ESP+6], AX      
+;     LGDT  [ESP+6]
+;     RET
+
+; _asm_load_idtr:            ; void asm_load_idtr(int limit, int addr)
+;     MOV   AX, [ESP+4]      ; limit
+;     MOV   [ESP+6], AX
+;     LIDT  [ESP+6]
+;     RET
+
+; x86 uses little endian: lsb is stored at the lowest address
+_asm_load_gdtr:            ; void asm_load_gdtr(unsigned short limit, int addr)
+    MOV   EAX, [ESP+4]
+    MOV   [ESP+6], AX
+    LGDT  [ESP+6]
+    RET
+
+_asm_load_idtr:            ; void asm_load_idtr(unsigned short limit, int addr)
+    MOV   EAX, [ESP+4]
+    MOV   [ESP+6], AX
+    LIDT  [ESP+6]
+    RET
+
+; PUSHAD pushes 8 registers:
+; PUSH EAX
+; PUSH ECX
+; PUSH EDX
+; PUSH EBX
+; PUSH ESP
+; PUSH EBP
+; PUSH ESI
+; PUSH EDI
+; POPAD pops them in the reverse order.
+
+_asm_int_handler0x21:
+    PUSH	ES
+    PUSH	DS
+    PUSHAD
+    MOV		EAX,ESP
+    PUSH	EAX
+    MOV		AX,SS
+    MOV		DS,AX
+    MOV		ES,AX
+    CALL	_int_handler0x21
+    POP		EAX
+    POPAD
+    POP		DS
+    POP		ES
+    IRETD
+
+_asm_int_handler0x27:
+    PUSH	ES
+    PUSH	DS
+    PUSHAD
+    MOV		EAX,ESP
+    PUSH	EAX
+    MOV		AX,SS
+    MOV		DS,AX
+    MOV		ES,AX
+    CALL	_int_handler0x27
+    POP		EAX
+    POPAD
+    POP		DS
+    POP		ES
+    IRETD
+
+_asm_int_handler0x2c:
+    PUSH	ES
+    PUSH	DS
+    PUSHAD
+    MOV		EAX,ESP
+    PUSH	EAX
+    MOV		AX,SS
+    MOV		DS,AX
+    MOV		ES,AX
+    CALL	_int_handler0x2c
+    POP		EAX
+    POPAD
+    POP		DS
+    POP		ES
+    IRETD

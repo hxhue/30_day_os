@@ -1,6 +1,12 @@
 #ifndef DRAW_H
 #define DRAW_H
 
+#if (defined(__cplusplus))
+	extern "C" {
+#endif
+
+#include <type.h>
+
 typedef enum RGBColor {
   RGB_BLACK = 0,
   RGB_RED = 1,
@@ -20,16 +26,20 @@ typedef enum RGBColor {
   RGB_GRAY_DARK = 15
 } Color;
 
-extern char g_cursor[16][16];
+extern u8 g_cursor[16][16];
 
 void init_palette(void);
-void set_palette(int start, int end, const unsigned char *rgb);
+void set_palette(int start, int end, const u8 *rgb);
 void fill_rect(Color color, int x0, int y0, int x1, int y1);
-void put_image(const char *rect, int width, int height, int x, int y);
+void put_image(const u8 *rect, int width, int height, int x, int y);
 void put_char(Color color, int x0, int y0, char ch);
 /* Linewrap is not implemented. */
 void put_string(Color color, int x0, int y0, const char *s);
 void init_screen();
 void init_cursor(Color background);
+
+#if (defined(__cplusplus))
+	}
+#endif
 
 #endif
