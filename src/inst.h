@@ -10,6 +10,7 @@ extern "C" {
 void asm_hlt();
 void asm_cli();
 void asm_sti();
+void asm_sti_hlt();
 u32 asm_in8(u32 port);
 u32 asm_in16(u32 port);
 u32 asm_in32(u32 port);

@@ -23,10 +23,17 @@ typedef enum RGBColor {
   RGB_CYAN_DARK = 12,
   RGB_PURPLE_DARK = 13,
   RGB_AQUA_DARK = 14,
-  RGB_GRAY_DARK = 15
+  RGB_GRAY_DARK = 15,
+  RGB_TRANSPARENT = 16,
 } Color;
 
-extern u8 g_cursor[16][16];
+// extern u8 g_cursor_image[16][16];
+
+typedef struct cursor_stat_t {
+  i32 x, y;
+} cursor_stat_t;
+
+extern cursor_stat_t g_cursor_stat;
 
 void init_palette(void);
 void set_palette(int start, int end, const u8 *rgb);
@@ -35,8 +42,10 @@ void put_image(const u8 *rect, int width, int height, int x, int y);
 void put_char(Color color, int x0, int y0, char ch);
 /* Linewrap is not implemented. */
 void put_string(Color color, int x0, int y0, const char *s);
-void init_screen();
-void init_cursor(Color background);
+void put_cursor(int x, int y);
+void init_display();
+void init_cursor();
+void window_redraw_all();
 
 #if (defined(__cplusplus))
 	}

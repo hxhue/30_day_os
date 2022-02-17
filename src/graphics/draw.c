@@ -2,29 +2,35 @@
 #include <boot/boot_info.h>
 #include <inst.h>
 #include <type.h>
+#include <event/event.h>
 
-void init_screen() {
-  init_palette();
-  Color bg = RGB_AQUA_DARK;
-  init_cursor(bg);
-
+static void draw_background() {
   int x = g_boot_info.width;
   int y = g_boot_info.height;
 
-  fill_rect(bg, 0, 0, x, y - 28);
-  fill_rect(RGB_GRAY, 0, y - 28, x, y - 27);
-  fill_rect(RGB_WHITE, 0, y - 27, x, y - 26);
-  fill_rect(RGB_GRAY, 0, y - 26, x, y);
-  fill_rect(RGB_WHITE, 3, y - 24, 60, y - 23);
-  fill_rect(RGB_WHITE, 2, y - 24, 3, y - 3);
-  fill_rect(RGB_GRAY_DARK, 3, y - 4, 60, y - 3);
-  fill_rect(RGB_GRAY_DARK, 59, y - 23, 60, y - 4);
-  fill_rect(RGB_BLACK, 2, y - 3, 60, y - 2);
-  fill_rect(RGB_BLACK, 60, y - 24, 61, y - 2);
-  fill_rect(RGB_GRAY_DARK, x - 47, y - 24, x - 3, y - 23);
+  fill_rect(RGB_AQUA_DARK, 0,      0,          x,  y - 28);
+  fill_rect(RGB_GRAY,      0,      y - 28,     x,  y - 27);
+  fill_rect(RGB_WHITE,     0,      y - 27,     x,  y - 26);
+  fill_rect(RGB_GRAY,      0,      y - 26,     x,  y);
+  fill_rect(RGB_WHITE,     3,      y - 24,    60,  y - 23);
+  fill_rect(RGB_WHITE,     2,      y - 24,     3,  y - 3);
+  fill_rect(RGB_GRAY_DARK, 3,      y - 4,     60,  y - 3);
+  fill_rect(RGB_GRAY_DARK, 59,     y - 23,    60,  y - 4);
+  fill_rect(RGB_BLACK,     2,      y - 3,     60,  y - 2);
+  fill_rect(RGB_BLACK,     60,     y - 24,    61,  y - 2);
+  fill_rect(RGB_GRAY_DARK, x - 47, y - 24, x - 3,  y - 23);
   fill_rect(RGB_GRAY_DARK, x - 47, y - 23, x - 46, y - 3);
-  fill_rect(RGB_WHITE, x - 47, y - 3, x - 3, y - 2);
-  fill_rect(RGB_WHITE, x - 3, y - 24, x - 2, y - 2);
+  fill_rect(RGB_WHITE,     x - 47, y - 3,  x - 3,  y - 2);
+  fill_rect(RGB_WHITE,     x - 3,  y - 24, x - 2,  y - 2);
+
+  put_char(RGB_WHITE, 0, 0, 'A');
+  put_string(RGB_AQUA, 24, 0, "Day 6: Hello, world!");
+}
+
+void init_display() {
+  init_palette();
+  init_cursor();
+  raise_event((event_t){.type = EVENT_REDRAW, .data = 0});
 }
 
 void put_char(Color color, int x0, int y0, char ch) {
@@ -60,8 +66,11 @@ void put_string(Color color, int x0, int y0, const char *s) {
   }
 }
 
-/* Comments are used to prevent tools from formating the blocks. */
-u8 g_cursor[16][16] = {
+#define CURSOR_WIDTH  16
+#define CURSOR_HEIGHT 16
+
+/* Comments are used to prevent tools from formating the code. */
+static u8 cursor_image[CURSOR_HEIGHT][CURSOR_WIDTH] = {
     "***.............", //
     "*OO**...........", //
     "*OOOO***........", //
@@ -80,22 +89,44 @@ u8 g_cursor[16][16] = {
     ".............***"  //
 };
 
-void init_cursor(Color background) {
+cursor_stat_t g_cursor_stat;
+
+void init_cursor() {
+  // Image
   int x, y;
-  for (x = 0; x < 16; ++x) {
-    for (y = 0; y < 16; ++y) {
-      switch (g_cursor[x][y]) {
+  for (y = 0; y < CURSOR_HEIGHT; ++y) {
+    for (x = 0; x < CURSOR_WIDTH; ++x) {
+      switch (cursor_image[y][x]) {
       case '*':
-        g_cursor[x][y] = RGB_BLACK;
+        cursor_image[y][x] = RGB_BLACK;
         break;
       case 'O':
-        g_cursor[x][y] = RGB_WHITE;
+        cursor_image[y][x] = RGB_WHITE;
         break;
       case '.':
-        g_cursor[x][y] = (char)background;
+        cursor_image[y][x] = RGB_TRANSPARENT;
         break;
       default:
         break;
+      }
+    }
+  }
+  // Position
+  g_cursor_stat.x = g_boot_info.width / 2;
+  g_cursor_stat.y = g_boot_info.height / 2;
+}
+
+void put_cursor(int x, int y) {
+  int i, j;
+  u8 *vram = (u8 *)g_boot_info.vram_addr;
+  for (j = 0; j < CURSOR_HEIGHT; ++j) {
+    for (i = 0; i < CURSOR_WIDTH; ++i) {
+      u8 color = cursor_image[j][i];
+      if (color != RGB_TRANSPARENT) {
+        int x1 = i + x, y1 = j + y;
+        if (x1 < g_boot_info.width && y1 < g_boot_info.height) {
+          vram[y1 * g_boot_info.width + x1] = color;
+        }
       }
     }
   }
@@ -162,4 +193,10 @@ void put_image(const u8 *rect, int width, int height, int x, int y) {
       vram[vram_offset + i + x] = rect[rect_offset + i];
     }
   }
+}
+
+// 2022年2月17日: background + mouse
+void window_redraw_all() {
+  draw_background();
+  put_cursor(g_cursor_stat.x, g_cursor_stat.y);
 }

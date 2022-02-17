@@ -11,6 +11,7 @@ enum Event {
     EVENT_NONE = 0,
     EVENT_KEYBOARD,
     EVENT_MOUSE,
+    EVENT_REDRAW,
     NUM_EVENT_TYPES
 };
 

@@ -22,19 +22,11 @@ void OS_startup(void) {
   /* Allow interrupts. External interrupts are not allowed yet. */
   asm_sti();
 
-  // Set color and cursor; draw a background.
-  init_screen();
-
-  put_char(RGB_WHITE, 0, 0, 'A');
-  put_string(RGB_AQUA, 24, 0, "ABC  Hello, world!");
-  put_string(RGB_RED_DARK, 0, 16, "Bootstrap main");
-  char buf[2048];
-  sprintf(buf, "sizeof(gdt_item):%d", sizeof(segment_descriptor_t));
-  put_string(RGB_GREEN, 0, 32, buf);
-  put_image((u8 *)g_cursor, 16, 16, 160, 100);
-
   // Initialize event loop data, e.g. event queue.
   prepare_event_loop();
+
+  // Set color and cursor; draw a background.
+  init_display();
 
   // Init devices and allow some external interrupts.
   // Once devices are initialized, events will come, so event queue

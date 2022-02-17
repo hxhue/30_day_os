@@ -5,7 +5,7 @@
 [BITS 32]                       
 [FILE "inst.nas"]           ; Name of this file
 
-    GLOBAL _asm_hlt,  _asm_cli,   _asm_sti
+    GLOBAL _asm_hlt,  _asm_cli,   _asm_sti, _asm_sti_hlt
     GLOBAL _asm_in8,  _asm_in16,  _asm_in32
     GLOBAL _asm_out8, _asm_out16, _asm_out32
     GLOBAL _asm_load_eflags,      _asm_store_eflags
@@ -58,6 +58,13 @@ _asm_sti:                  ; void asm_sti(void)
     STI
     RET
 
+; HLT after STI has a special effect:
+; interrupts bewteen them will stop HLT from making CPU sleep.
+_asm_sti_hlt:              ; void _asm_sti_hlt(void)
+    STI
+    HLT
+    RET
+
 _asm_in8:                  ; int asm_in8(int port)
     MOV  EDX, [ESP+4]      ; port
     MOV  EAX, 0
@@ -107,18 +114,6 @@ _asm_store_eflags:         ; void asm_store_eflags(int eflags)
 ; When operand is 32-bit, LGDT/LIDT needs a 6-byte argument stored in memory.
 ; The lower 2 bytes are used as limit, and higher 4 bytes are used as base address.
 ; Ref: https://www.felixcloutier.com/x86/lgdt:lidt
-
-; _asm_load_gdtr:            ; void asm_load_gdtr(int limit, int addr)
-;     MOV   AX, [ESP+4]      ; limit
-;     MOV   [ESP+6], AX      
-;     LGDT  [ESP+6]
-;     RET
-
-; _asm_load_idtr:            ; void asm_load_idtr(int limit, int addr)
-;     MOV   AX, [ESP+4]      ; limit
-;     MOV   [ESP+6], AX
-;     LIDT  [ESP+6]
-;     RET
 
 ; x86 uses little endian: lsb is stored at the lowest address
 _asm_load_gdtr:            ; void asm_load_gdtr(unsigned short limit, int addr)
