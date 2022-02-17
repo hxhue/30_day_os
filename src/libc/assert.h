@@ -5,7 +5,7 @@
 extern "C" {
 #endif
 
-void handle_assertion_failure(const char *assertion);
+void handle_assertion_failure(const char *assertion, const char *file, int line);
 
 #ifdef NDEBUG
 #define assert(condition) ((void)0)
@@ -16,11 +16,9 @@ void handle_assertion_failure(const char *assertion);
 #define assert(condition)                                                      \
   do {                                                                         \
     if (!(condition))                                                          \
-      handle_assertion_failure(TO_STRING(condition));                          \
+      handle_assertion_failure(TO_STRING(condition), __FILE__, __LINE__);      \
   } while (0)
-
-// #undef TO_STRING
-// #undef TO_STRING_IMPL
+  
 #endif
 
 #if (defined(__cplusplus))

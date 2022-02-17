@@ -11,7 +11,6 @@
 
 /* A segment register's higher 13 bits can be used, so the max possible segment
  * count is 8192. */
-/* TODO: Change immediate values into macros */
 #define SEGMENT_COUNT 8192
 #define INTERRUPT_COUNT 256
 #define GDT_LIMIT 0x0000ffff /* 8192 * 8 - 1 */
@@ -76,25 +75,6 @@ void set_gdt_entry(segment_descriptor_t *entry, u32 limit, u32 base, u8 ar,
    */
   entry->flag = flag & 0x0f;
 }
-
-// void set_gdt_entry(segment_descriptor_t *entry, u32 limit, u32 base, u16 ar) {
-//   if (limit > 0xfffff) {
-//     ar |= 0x0800; /* G_bit = 1 */
-//     limit >>= 12;
-//   } else {
-//     ar &= 0xf7ff; /* G_bit = 0 */ 
-//   }
-//   /* limit: 20 bits */
-//   entry->limit_low = limit & 0xffff;
-//   entry->limit_high = (limit >> 16) & 0x0f;
-//   /* base: 32 bits */
-//   entry->base_low = base & 0xffff;
-//   entry->base_mid = (base >> 16) & 0xff;
-//   entry->base_high = (base >> 24) & 0xff;
-//   /* access + flag : 12 bits */
-//   entry->access = ar & 0xff;
-//   entry->flag = (ar >> 8) & 0x0f;
-// }
 
 /**
  * offset: 32-bit address of handler function

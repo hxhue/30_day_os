@@ -1,9 +1,46 @@
+#include <assert.h>
 #include <boot/boot_info.h>
 #include <boot/int.h>
+#include <event/event.h>
 #include <graphics/draw.h>
 #include <inst.h>
-#include <assert.h>
 #include <type.h>
+
+#define PORT_KEYDAT           0x0060
+#define PORT_KEYSTA           0x0064
+#define PORT_KEYCMD           0x0064
+#define KEYSTA_SEND_NOT_READY 0x02
+#define KEYCMD_WRITE_MODE     0x60
+#define KBC_MODE              0x47
+#define KEYCMD_SENDTO_MOUSE   0xd4
+#define MOUSECMD_ENABLE       0xf4
+
+// kbdc is slow so CPU has to wait.
+// But kbdc was fast when I tested it in Qemu.
+static inline void wait_kbdc_ready() {
+  while (asm_in8(PORT_KEYSTA) & KEYSTA_SEND_NOT_READY) {
+    continue;
+  }
+}
+
+static inline void init_keyboard() {
+  wait_kbdc_ready();
+  // Send command: set mode (0x60).
+  asm_out8(PORT_KEYCMD, KEYCMD_WRITE_MODE);
+  wait_kbdc_ready();
+  // Send data: a mode that can use mouse (0x47).
+  // Mouse communicates through keyboard control circuit.
+  asm_out8(PORT_KEYDAT, KBC_MODE);
+}
+
+static inline void init_mouse() {
+  wait_kbdc_ready();
+  // Send command: transfer data to mouse
+  asm_out8(PORT_KEYCMD, KEYCMD_SENDTO_MOUSE);
+  wait_kbdc_ready();
+  // Send data: tell mouse to start working
+  asm_out8(PORT_KEYDAT, MOUSECMD_ENABLE);
+}
 
 /**
  * CPU has only 1 port.
@@ -19,7 +56,6 @@
  * Every PIC port has a responding interrupt request (IRQ).
  * It's numbered 0~15. 0~7 for PIC0, 8~15 for PIC1. IRQ 2 is not used.
  */
-
 void init_pic() {
   /* Ignore all external interrupts (IMR: Interrupt mask register) */
   asm_out8(PIC0_IMR, 0xff);
@@ -36,27 +72,30 @@ void init_pic() {
   asm_out8(PIC1_ICW3, 2);    /* No idea... */
   asm_out8(PIC1_ICW4, 0x01); /* No buffer */
 
-  asm_out8(PIC0_IMR, 0xfb); /* PIC0: 11111011: allow PIC1 */
-  asm_out8(PIC1_IMR, 0xff); /* PIC1: Allow none */
+  asm_out8(PIC0_IMR, 0xfb);  /* PIC0: 11111011: allow PIC1 */
+  asm_out8(PIC1_IMR, 0xff);  /* PIC1: Allow none */
 }
 
-/* PS/2 keyboard, 0x20 + 1 (keyboard) = 0x21. esp is the 32-bit stack register.
- */
+void init_devices() {
+  asm_out8(PIC0_IMR, 0xf9); /* 0b11111001, keyboard-1 and PIC1-2 */
+  asm_out8(PIC1_IMR, 0xef); /* 0b11101111, mouse-12 */
+  init_keyboard();
+  init_mouse();
+}
+
+/* PS/2 keyboard, 0x20 + 1 (kbd) = 0x21. esp is the 32-bit stack register. */
 void int_handler0x21(u32 esp) {
-  fill_rect(RGB_BLACK, 0, 0, g_boot_info.width, 16);
-  put_string(RGB_WHITE, 0, 0, "INT 21 (IRQ-1) : PS/2 keyboard");
-  for (;;) {
-    asm_hlt();
-  }
+  asm_out8(PIC0_OCW2, 0x60 + 0x1); /* Accept interrupt 0x1 */
+  u32 data = asm_in8(PORT_KEYDAT);
+  raise_event((event_t){.type = EVENT_KEYBOARD, .data = data});
 }
 
 /* PS/2 mouse, 0x20 + 12 (mouse) = 0x2c. esp is the 32-bit stack register. */
 void int_handler0x2c(u32 esp) {
-  fill_rect(RGB_BLACK, 0, 0, g_boot_info.width, 16);
-  put_string(RGB_WHITE, 0, 0, "INT 2C (IRQ-12) : PS/2 mouse");
-  for (;;) {
-    asm_hlt();
-  }
+  asm_out8(PIC1_OCW2, 0x60 + 0x4); // Tell PIC1 IRQ-12 (8+4) is received 
+  asm_out8(PIC0_OCW2, 0x60 + 0x2); // Tell PIC0 IRQ-2 is received 
+  u32 data = asm_in8(PORT_KEYDAT);
+  raise_event((event_t){.type = EVENT_MOUSE, .data = data});
 }
 
 /* PIC0からの不完全割り込み対策

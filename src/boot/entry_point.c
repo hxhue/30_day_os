@@ -6,6 +6,7 @@
 #include <inst.h>
 #include <stdio.h>
 #include <type.h>
+#include <event/event.h>
 
 boot_info_t g_boot_info;
 
@@ -21,6 +22,7 @@ void OS_startup(void) {
   /* Allow interrupts. External interrupts are not allowed yet. */
   asm_sti();
 
+  // Set color and cursor; draw a background.
   init_screen();
 
   put_char(RGB_WHITE, 0, 0, 'A');
@@ -31,13 +33,15 @@ void OS_startup(void) {
   put_string(RGB_GREEN, 0, 32, buf);
   put_image((u8 *)g_cursor, 16, 16, 160, 100);
 
-  /* Allow some external interrupts. */
-  asm_out8(PIC0_IMR, 0xf9); /* 0b11111001, keyboard-1 and PIC1-2 */
-  asm_out8(PIC1_IMR, 0xef); /* 0b11101111, mouse-12 */
-  // asm_out8(PIC0_IMR, 0);
-  // asm_out8(PIC1_IMR, 0);
+  // Initialize event loop data, e.g. event queue.
+  prepare_event_loop();
 
-  for (;;) {
-    asm_hlt();
-  }
+  // Init devices and allow some external interrupts.
+  // Once devices are initialized, events will come, so event queue
+  // must be initialized before that.
+  init_devices();
+
+  event_loop();
+  
+  assert(!"Unreachable");
 }
