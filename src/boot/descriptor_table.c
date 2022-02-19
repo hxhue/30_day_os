@@ -1,7 +1,7 @@
 #include <boot/descriptor_table.h>
-#include <inst.h>
+#include <support/asm.h>
 #include <string.h>
-#include <type.h>
+#include <support/type.h>
 
 /**
  * IDT      : 0x26f800～0x26ffff
@@ -25,8 +25,6 @@ void init_descriptor_tables() {
   asm_load_gdtr(GDT_LIMIT, 0x00270000);
   set_gdt_entry(gdt + 1, 0xffffffff, 0,          0x92, 0x04);
   set_gdt_entry(gdt + 2, 0x0007ffff, 0x00280000, 0x9a, 0x04);
-  // set_gdt_entry(gdt + 1, 0xffffffff, 0,          0x0492);
-  // set_gdt_entry(gdt + 2, 0x0007ffff, 0x00280000, 0x049a);
 
   /* IDT */
   gate_descriptor_t *idt = (gate_descriptor_t *)0x0026f800;

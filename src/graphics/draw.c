@@ -1,10 +1,23 @@
-#include <graphics/draw.h>
 #include <boot/boot_info.h>
-#include <inst.h>
-#include <type.h>
 #include <event/event.h>
+#include <graphics/draw.h>
+#include <memory/memory.h>
+#include <stdio.h>
+#include <support/asm.h>
+#include <support/type.h>
+#include <support/xlibc.h>
 
-static void draw_background() {
+// Global cursor variable
+cursor_stat_t g_cursor_stat;
+
+void display_max_addr() {
+  u32 max_addr = get_max_mem_addr();
+  char buf[64];
+  sprintf(buf, "memory: %d MB", max_addr / (1024 * 1024));
+  put_string(RGB_WHITE, 0, 80, buf);
+}
+
+static inline void draw_background() {
   int x = g_boot_info.width;
   int y = g_boot_info.height;
 
@@ -25,6 +38,16 @@ static void draw_background() {
 
   put_char(RGB_WHITE, 0, 0, 'A');
   put_string(RGB_AQUA, 24, 0, "Day 6: Hello, world!");
+
+  display_max_addr();
+
+  // xassert(malloc(4));
+
+  char buf[64];
+  sprintf(buf, "rand: %d", xrand());
+  put_string(RGB_WHITE, 0, 96, buf);
+
+  // put_string(RGB_WHITE, 0, 112, get_string());
 }
 
 void init_display() {
@@ -35,7 +58,7 @@ void init_display() {
 
 void put_char(Color color, int x0, int y0, char ch) {
   extern char hankaku[4096];
-  u8 *font16x8 = &hankaku[ch * 16];
+  u8 *font16x8 = (u8 *)&hankaku[ch * 16];
   u8 *vram = (u8 *)g_boot_info.vram_addr;
   int row;
   for (row = 0; row < 16; ++row) {
@@ -89,8 +112,6 @@ static u8 cursor_image[CURSOR_HEIGHT][CURSOR_WIDTH] = {
     ".............***"  //
 };
 
-cursor_stat_t g_cursor_stat;
-
 void init_cursor() {
   // Image
   int x, y;
@@ -116,7 +137,7 @@ void init_cursor() {
   g_cursor_stat.y = g_boot_info.height / 2;
 }
 
-void put_cursor(int x, int y) {
+static inline void put_cursor(int x, int y) {
   int i, j;
   u8 *vram = (u8 *)g_boot_info.vram_addr;
   for (j = 0; j < CURSOR_HEIGHT; ++j) {
@@ -130,6 +151,24 @@ void put_cursor(int x, int y) {
       }
     }
   }
+}
+
+/* Registers 16 predefined rgb colors by writing the first color index, and then
+   writing rgb consecutively. Ref: https://wiki.osdev.org/VGA_Hardware */
+static inline void set_palette(int start, int end, const u8 *rgb) {
+  int i, eflags;
+  eflags = asm_load_eflags(); /* Bit 9 contains interrupt permission. */
+  asm_cli();                  /* Clear interrupt permission. */
+  asm_out8(0x03c8, start);
+  for (i = start; i <= end; i++) {
+    asm_out8(0x03c9, rgb[0] / 4);
+    asm_out8(0x03c9, rgb[1] / 4);
+    asm_out8(0x03c9, rgb[2] / 4);
+    rgb += 3;
+  }
+  /* Restore eflags and thus the interrupt permission. */
+  asm_store_eflags(eflags);
+  return;
 }
 
 void init_palette() {
@@ -152,24 +191,6 @@ void init_palette() {
       0x84, 0x84, 0x84  /* 15:暗い灰色 */
   };
   set_palette(0, 15, table_rgb);
-}
-
-/* Registers 16 predefined rgb colors by writing the first color index, and then
-   writing rgb consecutively. Ref: https://wiki.osdev.org/VGA_Hardware */
-void set_palette(int start, int end, const u8 *rgb) {
-  int i, eflags;
-  eflags = asm_load_eflags(); /* Bit 9 contains interrupt permission. */
-  asm_cli();                  /* Clear interrupt permission. */
-  asm_out8(0x03c8, start);
-  for (i = start; i <= end; i++) {
-    asm_out8(0x03c9, rgb[0] / 4);
-    asm_out8(0x03c9, rgb[1] / 4);
-    asm_out8(0x03c9, rgb[2] / 4);
-    rgb += 3;
-  }
-  /* Restore eflags and thus the interrupt permission. */
-  asm_store_eflags(eflags);
-  return;
 }
 
 /* Fills the rectangle with specified color index. The rectange area is defined
@@ -196,7 +217,8 @@ void put_image(const u8 *rect, int width, int height, int x, int y) {
 }
 
 // 2022年2月17日: background + mouse
-void window_redraw_all() {
+void handle_event_redraw(int data_used) {
   draw_background();
   put_cursor(g_cursor_stat.x, g_cursor_stat.y);
 }
+

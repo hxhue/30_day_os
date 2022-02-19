@@ -1,3 +1,5 @@
 .vscode
+.gitgnore
+.clangd
 build
 test

@@ -1,12 +1,12 @@
-#include <assert.h>
 #include <boot/boot_info.h>
 #include <boot/descriptor_table.h>
 #include <boot/int.h>
-#include <graphics/draw.h>
-#include <inst.h>
-#include <stdio.h>
-#include <type.h>
 #include <event/event.h>
+#include <graphics/draw.h>
+#include <stdio.h>
+#include <support/asm.h>
+#include <support/type.h>
+#include <support/xlibc.h>
 
 boot_info_t g_boot_info;
 
@@ -34,6 +34,6 @@ void OS_startup(void) {
   init_devices();
 
   event_loop();
-  
-  assert(!"Unreachable");
+
+  xassert(!"Unreachable");
 }

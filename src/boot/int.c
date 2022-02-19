@@ -1,10 +1,10 @@
-#include <assert.h>
 #include <boot/boot_info.h>
 #include <boot/int.h>
 #include <event/event.h>
 #include <graphics/draw.h>
-#include <inst.h>
-#include <type.h>
+#include <support/asm.h>
+#include <support/type.h>
+#include <support/xlibc.h>
 
 #define PORT_KEYDAT           0x0060
 #define PORT_KEYSTA           0x0064

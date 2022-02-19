@@ -1,5 +1,3 @@
-; haribote-os boot asm
-; TAB=4
 
 MAIN_PROGRAM  EQU  0x00280000		; bootpackのロード先
 DSKCAC        EQU  0x00100000		; ディスクキャッシュの場所
@@ -35,6 +33,7 @@ VRAM	EQU		0x0ff8			; グラフィックバッファの開始番地
 ;	AT互換機の仕様では、PICの初期化をするなら、
 ;	こいつをCLI前にやっておかないと、たまにハングアップする
 ;	PICの初期化はあとでやる
+; Disable all kinds of interrupts
 
 		MOV		AL,0xff
 		OUT		0x21,AL
@@ -44,7 +43,8 @@ VRAM	EQU		0x0ff8			; グラフィックバッファの開始番地
 		CLI						; さらにCPUレベルでも割り込み禁止
 
 ; CPUから1MB以上のメモリにアクセスできるように、A20GATEを設定
-
+; 16-bit CPU can only use <1MB memory. (Default mode)
+; A20 enables CPU to make use of 32-bit address, so we can use more memory.
 		CALL	waitkbdout
 		MOV		AL,0xd1
 		OUT		0x64,AL
@@ -54,19 +54,22 @@ VRAM	EQU		0x0ff8			; グラフィックバッファの開始番地
 		CALL	waitkbdout
 
 ; プロテクトモード移行
+; Real mode: addr = seg_reg * 16 + offset
+; Protected mode: addr = (GDT_start + seg_reg).base + offset
 
-; Comment this line so nasm.exe can process the file.
-; This was used by nask.exe.
-[INSTRSET "i486p"]				; 486の命令まで使いたいという記述
+; nasm does not recognize this
+[INSTRSET "i486p"]		    ; 486の命令まで使いたいという記述
 
-		LGDT	[GDTR0]			; 暫定GDTを設定
+		LGDT	[GDTR0]			    ; 暫定GDTを設定
 		MOV		EAX,CR0
-		AND		EAX,0x7fffffff	; bit31を0にする（ページング禁止のため）
-		OR		EAX,0x00000001	; bit0を1にする（プロテクトモード移行のため）
+		AND		EAX,0x7fffffff	; bit31 = 0; Disable paging
+		OR		EAX,0x00000001	; bit0 = 1;  Protected virtual address mode
 		MOV		CR0,EAX
 		JMP		pipelineflush
+; Skip first 8 bytes so it means GDT[1].
+; Force CPU to discard pipelined instructions which are in different mode.
 pipelineflush:
-		MOV		AX,1*8			;  読み書き可能セグメント32bit
+		MOV		AX,1*8			    ;  読み書き可能セグメント32bit
 		MOV		DS,AX
 		MOV		ES,AX
 		MOV		FS,AX
@@ -74,7 +77,8 @@ pipelineflush:
 		MOV		SS,AX
 
 ; bootpackの転送
-
+; Copy the main program to location 0x00280000.
+; The specified size is 512 KB, which is larger than our program.
 		MOV		ESI,entry_point	 ; 転送元
 		MOV		EDI,MAIN_PROGRAM ; 転送先
 		MOV		ECX,512*1024/4
@@ -83,14 +87,16 @@ pipelineflush:
 ; ついでにディスクデータも本来の位置へ転送
 
 ; まずはブートセクタから
-
+; Copy IPL (512 bytes) from 0x7c00 to 0x00100000
 		MOV		ESI,0x7c00		; 転送元
 		MOV		EDI,DSKCAC		; 転送先
 		MOV		ECX,512/4
 		CALL	memcpy
 
 ; 残り全部
-
+; Copy the remaining system image to the space after IPL. Now the system image
+; has two copies in memory, but the address is much easier to remember and 
+; manage. (Main program has 3 copies.)
 		MOV		ESI,DSKCAC0+512	; 転送元
 		MOV		EDI,DSKCAC+512	; 転送先
 		MOV		ECX,0
@@ -103,7 +109,7 @@ pipelineflush:
 ;	あとはbootpackに任せる
 
 ; bootpackの起動
-
+; Other information, e.g. stack.
 		MOV		EBX,MAIN_PROGRAM
 		MOV		ECX,[EBX+16]
 		ADD		ECX,3			; ECX += 3;

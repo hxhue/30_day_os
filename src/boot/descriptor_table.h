@@ -5,7 +5,7 @@
 extern "C" {
 #endif
 
-#include <type.h>
+#include <support/type.h>
 
 typedef struct segment_descriptor_t {
   u16 limit_low, base_low;

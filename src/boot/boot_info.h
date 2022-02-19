@@ -5,7 +5,7 @@
 extern "C" {
 #endif
 
-#include <type.h>
+#include <support/type.h>
 
 typedef struct boot_info_t {
   u8 cyls, leds, vmode, reserve;

@@ -5,7 +5,7 @@
 extern "C" {
 #endif
 
-#include <type.h>
+#include <support/type.h>
 
 enum Event {
     EVENT_NONE = 0,

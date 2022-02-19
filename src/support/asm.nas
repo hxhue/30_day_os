@@ -1,4 +1,3 @@
-; inst.nas
 
 [FORMAT "WCOFF"]                
 [INSTRSET "i486p"]              
@@ -11,7 +10,7 @@
     GLOBAL _asm_load_eflags,      _asm_store_eflags
     GLOBAL _asm_load_gdtr,        _asm_load_idtr
     GLOBAL _asm_int_handler0x21,  _asm_int_handler0x27
-    GLOBAL _asm_int_handler0x2c
+    GLOBAL _asm_int_handler0x2c,  _asm_load_cr0, _asm_store_cr0
 
     EXTERN _int_handler0x21, _int_handler0x27, _int_handler0x2c
 
@@ -186,3 +185,12 @@ _asm_int_handler0x2c:
     POP		DS
     POP		ES
     IRETD
+
+_asm_load_cr0:              ; int asm_load_cr0(void)
+    MOV     EAX, CR0
+    RET
+
+_asm_store_cr0:             ; void asm_store_cr0(u32 cr0)
+    MOV     EAX, [ESP+4]
+    MOV     CR0, EAX
+    RET
