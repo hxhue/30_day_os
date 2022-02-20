@@ -1,4 +1,4 @@
-#include <boot/descriptor_table.h>
+#include <boot/desctbl.h>
 #include <support/asm.h>
 #include <string.h>
 #include <support/type.h>

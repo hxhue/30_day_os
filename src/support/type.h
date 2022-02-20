@@ -22,28 +22,58 @@ static inline i32 clamp_i32(i32 x, i32 low, i32 high) {
   return x;
 }
 
-static inline void swap8(u8 *x, u8 *y) {
-  u8 t = *x;
-  *x = *y;
-  *y = t;
+static inline u32 clamp_u32(u32 x, u32 low, u32 high) {
+  if (x < low)   return low;
+  if (x > high)  return high;
+  return x;
 }
 
-static inline void swap16(u16 *x, u16 *y) {
-  u16 t = *x;
-  *x = *y;
-  *y = t;
+static inline i16 clamp_i16(i16 x, i16 low, i16 high) {
+  if (x < low)   return low;
+  if (x > high)  return high;
+  return x;
 }
 
-static inline void swap32(u32 *x, u32 *y) {
-  u32 t = *x;
-  *x = *y;
-  *y = t;
+static inline u16 clamp_u16(u16 x, u16 low, u16 high) {
+  if (x < low)   return low;
+  if (x > high)  return high;
+  return x;
 }
 
-static inline void swap64(u64 *x, u64 *y) {
-  u64 t = *x;
-  *x = *y;
-  *y = t;
+static inline void swap8(void *x, void *y) {
+  u8 *X = (u8 *)x, *Y = (u8 *)y;
+  u8 t = *X;
+  *X = *Y;
+  *Y = t;
+}
+
+static inline void swap16(void *x, void *y) {
+  u16 *X = (u16 *)x, *Y = (u16 *)y;
+  u16 t = *X;
+  *X = *Y;
+  *Y = t;
+}
+
+static inline void swap32(void *x, void *y) {
+  u32 *X = (u32 *)x, *Y = (u32 *)y;
+  u32 t = *X;
+  *X = *Y;
+  *Y = t;
+}
+
+static inline void swap64(void *x, void *y) {
+  u64 *X = (u64 *)x, *Y = (u64 *)y;
+  u64 t = *X;
+  *X = *Y;
+  *Y = t;
+}
+
+// Swap for pointers
+static inline void swapptr(void *x, void *y) {
+  void **X = (void **)x, **Y = (void **)y;
+  void *t = *X;
+  *X = *Y;
+  *Y = t;
 }
 
 static inline u32 next_power_of2(u32 n) {
@@ -56,6 +86,20 @@ static inline u32 next_power_of2(u32 n) {
   n |= n >> 16;
 
   return n + 1;
+}
+
+static inline u32 gcd(u32 a, u32 b) {
+  u32 c = a % b;
+  while (c) {
+    a = b;
+    b = c;
+    c = a % b;
+  }
+  return b;
+}
+
+static inline u32 lcm(u32 a, u32 b) {
+  return (a * b) / gcd(a, b);
 }
 
 #if (defined(__cplusplus))

@@ -3,3 +3,4 @@
 .clangd
 build
 test
+.idea

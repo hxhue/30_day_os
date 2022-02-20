@@ -1,10 +1,12 @@
-#include <boot/boot_info.h>
+#include <boot/boot.h>
 #include <event/event.h>
 #include <event/mouse.h>
 #include <graphics/draw.h>
+#include <graphics/layer.h>
 #include <support/type.h>
 #include <support/xlibc.h>
 
+extern layer_info_t *g_mouse_layer;
 
 typedef struct mouse_msg_t {
   u8 buf[3];
@@ -36,8 +38,8 @@ static void inline handle_event_mouse_impl(mouse_msg_t msg) {
   // put_string(RGB_WHITE, 0, 0, buf);
 
   // Move cursor
-  g_cursor_stat.x = clamp_i32(g_cursor_stat.x + mouse_x, 0, g_boot_info.width - 1);
-  g_cursor_stat.y = clamp_i32(g_cursor_stat.y + mouse_y, 0, g_boot_info.height - 1);
+  g_mouse_layer->x = clamp_i32(g_mouse_layer->x + mouse_x, 0, g_boot_info.width - 1);
+  g_mouse_layer->y = clamp_i32(g_mouse_layer->y + mouse_y, 0, g_boot_info.height - 1);
 
   // Redraw window
   if (mouse_x || mouse_y) {

@@ -13,6 +13,7 @@
 #endif
 
 #include <stdarg.h>
+#include <stddef.h>
 
 int sprintf(char *s, const char *format, ...);
 int vsprintf(char *s, const char *format, va_list arg);

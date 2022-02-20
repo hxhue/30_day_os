@@ -1,7 +1,4 @@
-#include <boot/boot_info.h>
-#include <graphics/draw.h>
 #include <stdio.h>
-#include <string.h>
 #include <support/asm.h>
 #include <support/xlibc.h>
 
@@ -16,13 +13,23 @@ void xsrand(unsigned seed) { rand_seed_next = seed; }
 
 void handle_assertion_failure(const char *assertion, const char *file,
                               int line) {
-  fill_rect(RGB_BLACK, 0, g_boot_info.height - 16, g_boot_info.width,
-            g_boot_info.height);
   char buf[128];
-  sprintf(buf, "ASF:%s:%d: %-.100s", file, line, assertion);
-  put_string(RGB_RED, 0, g_boot_info.height - 16, buf);
+  sprintf(buf, "\nAssertion failure:\n\t%s:%d: %-.100s\n", file, line, assertion);
+  const char *p;
+  for (p = buf; *p; ++p) {
+    asm_out8(0x3F8, *p); // Qemu serial port
+  }
   for (;;) {
     asm_hlt();
   }
 }
 
+int xputs( const char *p ) {
+  int n = 0;
+  for (; *p; ++p) {
+    asm_out8(0x3F8, *p); // Qemu serial port
+    ++n;
+  }
+  asm_out8(0x3F8, '\n');
+  return n + 1;
+}

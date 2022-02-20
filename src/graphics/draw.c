@@ -1,65 +1,74 @@
-#include <boot/boot_info.h>
+#include <boot/boot.h>
 #include <event/event.h>
 #include <graphics/draw.h>
+#include <graphics/layer.h>
 #include <memory/memory.h>
 #include <stdio.h>
+#include <string.h>
 #include <support/asm.h>
 #include <support/type.h>
 #include <support/xlibc.h>
 
-// Global cursor variable
-cursor_stat_t g_cursor_stat;
+// TODO: Mouse layer is still user layer
+#define MOUSE_LAYER_RANK 20000
 
-void display_max_addr() {
+layer_info_t *g_mouse_layer;
+static layer_info_t *g_background_layer;
+
+void init_palette();
+void init_cursor();
+
+void init_background() {
+  int w = g_boot_info.width;
+  int h = g_boot_info.height;
+
+  layer_info_t *layer = new_layer(w, h, 0, 0, (u8 *)0);
+  xassert(layer);
+  u8 *vram = layer->buf;
+
+  fill_rect(vram, RGB_AQUA_DARK, 0,      0,          w,  h - 28);
+  fill_rect(vram, RGB_GRAY,      0,      h - 28,     w,  h - 27);
+  fill_rect(vram, RGB_WHITE,     0,      h - 27,     w,  h - 26);
+  fill_rect(vram, RGB_GRAY,      0,      h - 26,     w,  h);
+  fill_rect(vram, RGB_WHITE,     3,      h - 24,    60,  h - 23);
+  fill_rect(vram, RGB_WHITE,     2,      h - 24,     3,  h - 3);
+  fill_rect(vram, RGB_GRAY_DARK, 3,      h - 4,     60,  h - 3);
+  fill_rect(vram, RGB_GRAY_DARK, 59,     h - 23,    60,  h - 4);
+  fill_rect(vram, RGB_BLACK,     2,      h - 3,     60,  h - 2);
+  fill_rect(vram, RGB_BLACK,     60,     h - 24,    61,  h - 2);
+  fill_rect(vram, RGB_GRAY_DARK, w - 47, h - 24, w - 3,  h - 23);
+  fill_rect(vram, RGB_GRAY_DARK, w - 47, h - 23, w - 46, h - 3);
+  fill_rect(vram, RGB_WHITE,     w - 47, h - 3,  w - 3,  h - 2);
+  fill_rect(vram, RGB_WHITE,     w - 3,  h - 24, w - 2,  h - 2);
+
+  put_char(vram, RGB_WHITE, 0, 0, 'A');
+  put_string(vram, RGB_AQUA, 24, 0, "Day 6: Hello, world!");
+
   u32 max_addr = get_max_mem_addr();
+  u32 free_mem = get_avail_mem();
   char buf[64];
-  sprintf(buf, "memory: %d MB", max_addr / (1024 * 1024));
-  put_string(RGB_WHITE, 0, 80, buf);
-}
-
-static inline void draw_background() {
-  int x = g_boot_info.width;
-  int y = g_boot_info.height;
-
-  fill_rect(RGB_AQUA_DARK, 0,      0,          x,  y - 28);
-  fill_rect(RGB_GRAY,      0,      y - 28,     x,  y - 27);
-  fill_rect(RGB_WHITE,     0,      y - 27,     x,  y - 26);
-  fill_rect(RGB_GRAY,      0,      y - 26,     x,  y);
-  fill_rect(RGB_WHITE,     3,      y - 24,    60,  y - 23);
-  fill_rect(RGB_WHITE,     2,      y - 24,     3,  y - 3);
-  fill_rect(RGB_GRAY_DARK, 3,      y - 4,     60,  y - 3);
-  fill_rect(RGB_GRAY_DARK, 59,     y - 23,    60,  y - 4);
-  fill_rect(RGB_BLACK,     2,      y - 3,     60,  y - 2);
-  fill_rect(RGB_BLACK,     60,     y - 24,    61,  y - 2);
-  fill_rect(RGB_GRAY_DARK, x - 47, y - 24, x - 3,  y - 23);
-  fill_rect(RGB_GRAY_DARK, x - 47, y - 23, x - 46, y - 3);
-  fill_rect(RGB_WHITE,     x - 47, y - 3,  x - 3,  y - 2);
-  fill_rect(RGB_WHITE,     x - 3,  y - 24, x - 2,  y - 2);
-
-  put_char(RGB_WHITE, 0, 0, 'A');
-  put_string(RGB_AQUA, 24, 0, "Day 6: Hello, world!");
-
-  display_max_addr();
-
-  // xassert(malloc(4));
-
-  char buf[64];
+  sprintf(buf, "memory: %d MB, free: %d KB", max_addr / (1024 * 1024),
+          free_mem / 1024);
+  put_string(vram, RGB_WHITE, 0, 80, buf);
   sprintf(buf, "rand: %d", xrand());
-  put_string(RGB_WHITE, 0, 96, buf);
+  put_string(vram, RGB_WHITE, 0, 96, buf);
 
-  // put_string(RGB_WHITE, 0, 112, get_string());
+  set_layer_rank(layer, 1);
+
+  g_background_layer = layer;
 }
 
 void init_display() {
   init_palette();
-  init_cursor();
-  raise_event((event_t){.type = EVENT_REDRAW, .data = 0});
+  init_layer_mgr();
+  init_background(); // Background layer
+  init_cursor();     // Cursor layer
 }
 
-void put_char(Color color, int x0, int y0, char ch) {
+void put_char(u8 *vram, Color color, int x0, int y0, char ch) {
   extern char hankaku[4096];
   u8 *font16x8 = (u8 *)&hankaku[ch * 16];
-  u8 *vram = (u8 *)g_boot_info.vram_addr;
+  // u8 *vram = (u8 *)g_boot_info.vram_addr;
   int row;
   for (row = 0; row < 16; ++row) {
     u8 *row_addr = vram + g_boot_info.width * (row + y0) + x0;
@@ -83,9 +92,9 @@ void put_char(Color color, int x0, int y0, char ch) {
   }
 }
 
-void put_string(Color color, int x0, int y0, const char *s) {
+void put_string(u8 *vram, Color color, int x0, int y0, const char *s) {
   for (; *s; (void)++s, (void)(x0 += 8)) {
-    put_char(color, x0, y0, *s);
+    put_char(vram, color, x0, y0, *s);
   }
 }
 
@@ -132,32 +141,34 @@ void init_cursor() {
       }
     }
   }
-  // Position
-  g_cursor_stat.x = g_boot_info.width / 2;
-  g_cursor_stat.y = g_boot_info.height / 2;
+
+  g_mouse_layer = new_layer(CURSOR_WIDTH, CURSOR_HEIGHT, g_boot_info.width / 2,
+                            g_boot_info.height / 2, &cursor_image[0][0]);
+  xassert(g_mouse_layer);
+  set_layer_rank(g_mouse_layer, MOUSE_LAYER_RANK);
 }
 
-static inline void put_cursor(int x, int y) {
-  int i, j;
-  u8 *vram = (u8 *)g_boot_info.vram_addr;
-  for (j = 0; j < CURSOR_HEIGHT; ++j) {
-    for (i = 0; i < CURSOR_WIDTH; ++i) {
-      u8 color = cursor_image[j][i];
-      if (color != RGB_TRANSPARENT) {
-        int x1 = i + x, y1 = j + y;
-        if (x1 < g_boot_info.width && y1 < g_boot_info.height) {
-          vram[y1 * g_boot_info.width + x1] = color;
-        }
-      }
-    }
-  }
-}
+// static inline void put_cursor(u8 *vram, int x, int y) {
+//   int i, j;
+//   // u8 *vram = (u8 *)g_boot_info.vram_addr;
+//   for (j = 0; j < CURSOR_HEIGHT; ++j) {
+//     for (i = 0; i < CURSOR_WIDTH; ++i) {
+//       u8 color = cursor_image[j][i];
+//       if (color != RGB_TRANSPARENT) {
+//         int x1 = i + x, y1 = j + y;
+//         if (x1 < g_boot_info.width && y1 < g_boot_info.height) {
+//           vram[y1 * g_boot_info.width + x1] = color;
+//         }
+//       }
+//     }
+//   }
+// }
 
 /* Registers 16 predefined rgb colors by writing the first color index, and then
    writing rgb consecutively. Ref: https://wiki.osdev.org/VGA_Hardware */
 static inline void set_palette(int start, int end, const u8 *rgb) {
-  int i, eflags;
-  eflags = asm_load_eflags(); /* Bit 9 contains interrupt permission. */
+  int i;
+  u32 eflags = asm_load_eflags(); /* Bit 9 contains interrupt permission. */
   asm_cli();                  /* Clear interrupt permission. */
   asm_out8(0x03c8, start);
   for (i = start; i <= end; i++) {
@@ -168,7 +179,6 @@ static inline void set_palette(int start, int end, const u8 *rgb) {
   }
   /* Restore eflags and thus the interrupt permission. */
   asm_store_eflags(eflags);
-  return;
 }
 
 void init_palette() {
@@ -195,8 +205,9 @@ void init_palette() {
 
 /* Fills the rectangle with specified color index. The rectange area is defined
    by [x0, x1) and [y0, y1). */
-void fill_rect(Color color, int x0, int y0, int x1, int y1) {
-  u8 *vram = (u8 *)g_boot_info.vram_addr;
+// TODO: area constraining!
+void fill_rect(u8 *vram, Color color, int x0, int y0, int x1, int y1) {
+  // u8 *vram = (u8 *)g_boot_info.vram_addr;
   int x, y;
   for (x = x0; x < x1; ++x)
     for (y = y0; y < y1; ++y)
@@ -204,8 +215,8 @@ void fill_rect(Color color, int x0, int y0, int x1, int y1) {
 }
 
 /* Copies a rectangle with its top left relocated to (x, y). */
-void put_image(const u8 *rect, int width, int height, int x, int y) {
-  u8 *vram = (u8 *)g_boot_info.vram_addr;
+void put_image(u8 *vram, const u8 *rect, int width, int height, int x, int y) {
+  // u8 *vram = (u8 *)g_boot_info.vram_addr;
   int i, j;
   for (j = 0; j < height; ++j) {
     int vram_offset = g_boot_info.width * (j + y);
@@ -216,9 +227,6 @@ void put_image(const u8 *rect, int width, int height, int x, int y) {
   }
 }
 
-// 2022年2月17日: background + mouse
-void handle_event_redraw(int data_used) {
-  draw_background();
-  put_cursor(g_cursor_stat.x, g_cursor_stat.y);
+void handle_event_redraw(int data) {
+  redraw_layers(0, 0, 0, g_boot_info.width, g_boot_info.height);
 }
-

@@ -27,20 +27,17 @@ typedef enum RGBColor {
   RGB_TRANSPARENT = 16,
 } Color;
 
-typedef struct cursor_stat_t {
-  i32 x, y;
-} cursor_stat_t;
-
-extern cursor_stat_t g_cursor_stat;
-
-void init_palette();
 void init_display();
-void init_cursor();
-void fill_rect(Color color, int x0, int y0, int x1, int y1);
-void put_image(const u8 *rect, int width, int height, int x, int y);
-void put_char(Color color, int x0, int y0, char ch);
-/* Linewrap is not implemented. */
-void put_string(Color color, int x0, int y0, const char *s);
+
+// TODO: change vram argument to layer_info_t
+void fill_rect(u8 *vram, Color color, int x0, int y0, int x1, int y1);
+
+void put_image(u8 *vram, const u8 *rect, int width, int height, int x, int y);
+
+void put_char(u8 *vram, Color color, int x0, int y0, char ch);
+
+/* Line-wrap is not implemented. */
+void put_string(u8 *vram, Color color, int x0, int y0, const char *s);
 
 void handle_event_redraw(int data); // Data is not used
 

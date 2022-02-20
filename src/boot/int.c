@@ -1,4 +1,4 @@
-#include <boot/boot_info.h>
+#include <boot/boot.h>
 #include <boot/int.h>
 #include <event/event.h>
 #include <graphics/draw.h>
@@ -74,6 +74,8 @@ void init_pic() {
 
   asm_out8(PIC0_IMR, 0xfb);  /* PIC0: 11111011: allow PIC1 */
   asm_out8(PIC1_IMR, 0xff);  /* PIC1: Allow none */
+
+  asm_sti();                 // Allow interrupts
 }
 
 void init_devices() {

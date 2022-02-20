@@ -1,11 +1,9 @@
-#include <boot/boot_info.h>
-#include <boot/descriptor_table.h>
+#include <boot/boot.h>
+#include <boot/desctbl.h>
 #include <boot/int.h>
 #include <event/event.h>
 #include <graphics/draw.h>
-#include <stdio.h>
-#include <support/asm.h>
-#include <support/type.h>
+#include <memory/memory.h>
 #include <support/xlibc.h>
 
 boot_info_t g_boot_info;
@@ -16,11 +14,11 @@ void OS_startup(void) {
 
   init_descriptor_tables();
 
-  /* Initialize PIC. Do not allow external interrupts. */
+  // Initialize PIC and allow interrupts. External interrupts are not allowed
+  // yet.
   init_pic();
 
-  /* Allow interrupts. External interrupts are not allowed yet. */
-  asm_sti();
+  init_mem_mgr();
 
   // Initialize event loop data, e.g. event queue.
   prepare_event_loop();

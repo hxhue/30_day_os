@@ -1,4 +1,4 @@
-#include <boot/boot_info.h>
+#include <boot/boot.h>
 #include <event/event.h>
 #include <event/keyboard.h>
 #include <event/mouse.h>
@@ -7,7 +7,6 @@
 #include <support/asm.h>
 #include <support/type.h>
 #include <support/xlibc.h>
-
 
 typedef struct event_queue_t {
   event_t *queue;

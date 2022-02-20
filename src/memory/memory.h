@@ -7,14 +7,14 @@ extern "C" {
 
 #include <support/type.h>
 
-typedef struct memory_set_t memory_set_t;
+void init_mem_mgr();
 
 u32  get_max_mem_addr();
-// No need to call this util "malloc" is to be used.
-void init_mem(memory_set_t *mem, u32 addr, u32 total_size);
-u32  alloc_mem(memory_set_t *mem, u32 size);
-void free_mem(memory_set_t *mem, u32 addr);
-u32  get_avail_mem(const memory_set_t *mem);
+void *alloc_mem(u32 size);
+void *alloc_mem_4k(u32 size);
+int  reclaim_mem(u32 addr, u32 size); // 0 for success, -1 for failure
+int  reclaim_mem_4k(u32 addr, u32 size);
+u32  get_avail_mem();
 
 #if (defined(__cplusplus))
 }

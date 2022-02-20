@@ -29,22 +29,22 @@ DEL       := $(BIN)/rm.exe -f
 CAT       := $(BIN)/cat.exe
 FIND      := $(BIN)/find.exe
 MKDIR     := $(BIN)/mkdir.exe
-#CC1      := $(BIN)/cc1.exe $(INCLUDE_FLAGS) -nostdinc -Os -Wall -quiet -std=c99 -Werror
+CC1       := $(BIN)/cc1.exe -Isrc -Isrc/libc -nostdinc -Os -Wall -quiet -std=c99 -Werror
 
-C_FLAGS   := -m32 -Isrc -Isrc/libc -std=c99 -nostdinc -Os -Wall
-CXX_FLAGS := -m32 -Isrc -Isrc/libc -std=c++17 -Os -Wall
+C_FLAGS   := -m32 -Isrc -Isrc/libc -nostdinc -std=c99 -Os -Wall
+CXX_FLAGS := -m32 -Isrc -std=c++17 -Os -Wall
 
 QEMU_IMG   = $(BUILD)/os.img
 QEMU_RUN   = qemu-system-x86_64 -L . -m 32 -rtc base=localtime -vga std \
-			-drive "file=$(QEMU_IMG),format=raw,if=floppy" -accel hax
+			-drive "file=$(QEMU_IMG),format=raw,if=floppy" -accel hax -serial stdio
 
 # Get all C files in src/*/*
 C_SOURCES  := $(shell $(FIND) src/ -mindepth 2 -name "*.c")
 C_OBJS     := $(patsubst src/%.c,$(BUILD)/%.obj,$(C_SOURCES))
 
 # Get all CPP files in src/*/*
-CPP_SOURCES := $(shell $(FIND) src/ -mindepth 2 -name "*.cpp")
-CPP_OBJS    := $(patsubst src/%.cpp,$(BUILD)/%.obj,$(CPP_SOURCES))
+#CPP_SOURCES := $(shell $(FIND) src/ -mindepth 2 -name "*.cpp")
+#CPP_OBJS    := $(patsubst src/%.cpp,$(BUILD)/%.obj,$(CPP_SOURCES))
 
 # Get all NASM files in src/*/*
 NAS_SOURCES := $(shell $(FIND) src/ -mindepth 2 -name "*.nas")
@@ -55,7 +55,7 @@ all : run
 # Test util functions
 .PHONY: test clean
 test:
-	gcc $(INCLUDE_FLAGS) -o $(BUILD)/test.exe $(shell $(FIND) test -name "*.c")
+	clang -Isrc -Isrc/libc -Dxassert=assert -DXLIBC_H -o $(BUILD)/test.exe $(shell $(FIND) test -name "*.c") $(TEST_SRC)
 	@echo "======== Running $(BUILD)/test.exe ========"
 	@$(BUILD)/test.exe
 
@@ -67,15 +67,15 @@ $(BUILD)/hankaku.obj: src/hankaku.txt
 # C files
 $(C_OBJS) : $(BUILD)/%.obj : src/%.c
 	$(MKDIR) -p $(dir $@)
-	gcc $(C_FLAGS) -c $< -o $@ 
+	gcc $(C_FLAGS) -c $< -o $@
 #	$(CC1) -o $(patsubst %.obj,%.gas,$@) $<
 #	$(GAS2NASK) $(patsubst %.obj,%.gas,$@) $(patsubst %.obj,%.nas,$@)
-#	$(NASK) $(patsubst %.obj,%.nas,$@) $@ $(patsubst %.obj,%.lst,$@) 
+#	$(NASK) $(patsubst %.obj,%.nas,$@) $@ $(patsubst %.obj,%.lst,$@)
 
 # CPP files
-$(CPP_OBJS) : $(BUILD)/%.obj : src/%.cpp
-	$(MKDIR) -p $(dir $@)
-	g++ $(CXX_FLAGS) -c $< -o $@
+#$(CPP_OBJS) : $(BUILD)/%.obj : src/%.cpp
+#	$(MKDIR) -p $(dir $@)
+#	g++ $(CXX_FLAGS) -c $< -o $@
 
 # NASM files
 $(NAS_OBJS) : $(BUILD)/%.obj : src/%.nas
