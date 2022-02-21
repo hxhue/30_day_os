@@ -40,6 +40,14 @@ static inline u16 clamp_u16(u16 x, u16 low, u16 high) {
   return x;
 }
 
+static inline i32 min_i32(i32 x, i32 y) {
+  return x < y ? x : y;
+}
+
+static inline i32 max_i32(i32 x, i32 y) {
+  return x > y ? x : y;
+}
+
 static inline void swap8(void *x, void *y) {
   u8 *X = (u8 *)x, *Y = (u8 *)y;
   u8 t = *X;

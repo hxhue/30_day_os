@@ -29,15 +29,16 @@ typedef enum RGBColor {
 
 void init_display();
 
-// TODO: change vram argument to layer_info_t
-void fill_rect(u8 *vram, Color color, int x0, int y0, int x1, int y1);
+struct layer_info_t;
 
-void put_image(u8 *vram, const u8 *rect, int width, int height, int x, int y);
+void fill_rect(struct layer_info_t *layer, Color color, int x0, int y0, int x1, int y1);
 
-void put_char(u8 *vram, Color color, int x0, int y0, char ch);
+void put_image(struct layer_info_t *layer, const u8 *rect, int width, int height, int x, int y);
+
+void put_char(struct layer_info_t *layer, Color color, int x0, int y0, char ch);
 
 /* Line-wrap is not implemented. */
-void put_string(u8 *vram, Color color, int x0, int y0, const char *s);
+void put_string(struct layer_info_t *layer, Color color, int x0, int y0, const char *s);
 
 void handle_event_redraw(int data); // Data is not used
 
