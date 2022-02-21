@@ -31,9 +31,10 @@ static inline int layercmp(const layer_info_t *l, const layer_info_t *r) {
   return (l->rank != r->rank) ? (l->rank - r->rank) : l - r;
 };
 
-// Returns index of the layer ( -1 on failure)
-static inline int find_layer(layer_info_t *l) {
-  // TODO: binary search
+// Returns index of the layer ( -1 on failure).
+// Binary search is useless because the moving operation's time complexity
+// is O(n).
+static int find_layer(layer_info_t *l) {
   layer_info_t **layers = g_lctl->layers;
   int i = 0, ntotal = g_lctl->ntotal;
   for (; i < ntotal; ++i) {

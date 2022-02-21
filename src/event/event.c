@@ -1,3 +1,4 @@
+#include <memory/memory.h>
 #include <boot/boot.h>
 #include <event/event.h>
 #include <event/keyboard.h>
@@ -32,10 +33,14 @@ static inline event_t pop_event(event_queue_t *q) {
 
 static inline void push_event(event_queue_t *q, event_t e) {
   u32 next = (q->end + 1) % q->capacity;
-  // Ignore event when queue is full
+  
   if (next != q->front) {
     q->queue[q->end] = e;
     q->end = next;
+  } else {
+    // Ignore event when queue is full
+    xprintf("Warning: Event{%02d, 0X%08X} is discarded because queue is full\n",
+            e.type, e.data);
   }
 }
 
@@ -45,16 +50,18 @@ static void (*event_handler_vec[NUM_EVENT_TYPES])(int) = {
     [EVENT_REDRAW]   = handle_event_redraw,
 };
 
+#define EVENT_QUEUE_SIZE 4096
+
 static inline void init_event_queue(event_queue_t *q) {
-  static event_t event_buf[4096];
   // Only allow initializing global event queue now
   xassert(q == &g_event_queue);
-  q->queue = event_buf;
+  q->queue = alloc_mem_4k(EVENT_QUEUE_SIZE * sizeof(event_t));
   // front == end                  : empty
   // (end + 1) % capacity == front : full
   q->front = 0;
   q->end = 0;
-  q->capacity = sizeof(event_buf) / sizeof(event_t);
+  q->capacity = EVENT_QUEUE_SIZE;
+  xassert(q->queue);
 }
 
 void raise_event(event_t e) {

@@ -17,7 +17,7 @@ enum Event {
 
 typedef struct event_t {
   enum Event type;
-  u32 data;
+  int data;
 } event_t;
 
 // TODO: Set flags if queue overflows
