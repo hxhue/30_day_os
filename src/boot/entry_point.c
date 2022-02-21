@@ -4,7 +4,7 @@
 #include <event/event.h>
 #include <graphics/draw.h>
 #include <memory/memory.h>
-#include <support/xlibc.h>
+#include <support/debug.h>
 
 boot_info_t g_boot_info;
 

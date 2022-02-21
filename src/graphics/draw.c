@@ -7,7 +7,7 @@
 #include <string.h>
 #include <support/asm.h>
 #include <support/type.h>
-#include <support/xlibc.h>
+#include <support/debug.h>
 
 // TODO: Mouse layer is still user layer
 #define MOUSE_LAYER_RANK 20000
@@ -107,27 +107,32 @@ void put_string(layer_info_t *layer, Color color, int x0, int y0, const char *s)
   }
 }
 
-#define CURSOR_WIDTH  16
-#define CURSOR_HEIGHT 16
+#define CURSOR_WIDTH  12
+#define CURSOR_HEIGHT 21
 
 /* Comments are used to prevent tools from formating the code. */
 static u8 cursor_image[CURSOR_HEIGHT][CURSOR_WIDTH] = {
-    "**..............", //
-    "*OO**...........", //
-    ".OOOO***........", //
-    ".*OOOOOO***.....", //
-    ".*OOOOOOOOO*....", //
-    "..*OOOOOO**.....", //
-    "..*OOOOO*.......", //
-    "..*OOOOOO*......", //
-    "...*OO*OOO*.....", //
-    "...*O*.*OOO*....", //
-    "...*O*..*OOO*...", //
-    "....*....*OOO*..", //
-    "..........*OOO*.", //
-    "...........*OOO*", //
-    "............*OO*", //
-    ".............***"  //
+    "Booooooooooo", //
+    "BBoooooooooo", //
+    "BXBooooooooo", //
+    "BXXBoooooooo", //
+    "BXXXBooooooo", //
+    "BXXXXBoooooo", //
+    "BXXXXXBooooo", //
+    "BXXXXXXBoooo", //
+    "BXXXXXXXBooo", //
+    "BXXXXXXXXBoo", //
+    "BXXXXXXXXXBo", //
+    "BXXXXXXBBBBB", //
+    "BXXXBXXBoooo", //
+    "BXXBBXXBoooo", //
+    "BXBooBXXBooo", //
+    "BBoooBXXBooo", //
+    "BoooooBXXBoo", //
+    "ooooooBXXBoo", //
+    "oooooooBXXBo", //
+    "oooooooBXXBo", //
+    "ooooooooBBoo", //
 };
 
 void init_cursor() {
@@ -136,16 +141,14 @@ void init_cursor() {
   for (y = 0; y < CURSOR_HEIGHT; ++y) {
     for (x = 0; x < CURSOR_WIDTH; ++x) {
       switch (cursor_image[y][x]) {
-      case '*':
+      case 'B':
         cursor_image[y][x] = RGB_BLACK;
         break;
-      case 'O':
+      case 'X':
         cursor_image[y][x] = RGB_WHITE;
         break;
-      case '.':
-        cursor_image[y][x] = RGB_TRANSPARENT;
-        break;
       default:
+        cursor_image[y][x] = RGB_TRANSPARENT;
         break;
       }
     }
@@ -235,5 +238,12 @@ void put_image(layer_info_t *layer, const u8 *rect, int width, int height, int x
 }
 
 void handle_event_redraw(int data) {
-  redraw_layers(0, 0, 0, g_boot_info.width, g_boot_info.height);
+  if (data == 0) {
+    redraw_layers(0, 0, g_boot_info.width, g_boot_info.height);
+  } else {
+    redraw_layers(((data >> 24) & 0xff) * REDRAW_XY_FACTOR,
+                  ((data >> 16) & 0xff) * REDRAW_XY_FACTOR,
+                  ((data >> 8) & 0xff) * REDRAW_XY_FACTOR,
+                  (data & 0xff) * REDRAW_XY_FACTOR);
+  }
 }

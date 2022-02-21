@@ -4,7 +4,7 @@
 #include <graphics/draw.h>
 #include <support/asm.h>
 #include <support/type.h>
-#include <support/xlibc.h>
+#include <support/debug.h>
 
 #define PORT_KEYDAT           0x0060
 #define PORT_KEYSTA           0x0064
@@ -89,7 +89,7 @@ void init_devices() {
 void int_handler0x21(u32 esp) {
   asm_out8(PIC0_OCW2, 0x60 + 0x1); /* Accept interrupt 0x1 */
   u32 data = asm_in8(PORT_KEYDAT);
-  raise_event((event_t){.type = EVENT_KEYBOARD, .data = data});
+  raise_event(EVENT_KEYBOARD, (i32)data);
 }
 
 /* PS/2 mouse, 0x20 + 12 (mouse) = 0x2c. esp is the 32-bit stack register. */
@@ -97,7 +97,7 @@ void int_handler0x2c(u32 esp) {
   asm_out8(PIC1_OCW2, 0x60 + 0x4); // Tell PIC1 IRQ-12 (8+4) is received 
   asm_out8(PIC0_OCW2, 0x60 + 0x2); // Tell PIC0 IRQ-2 is received 
   u32 data = asm_in8(PORT_KEYDAT);
-  raise_event((event_t){.type = EVENT_MOUSE, .data = data});
+  raise_event(EVENT_MOUSE, (i32)data);
 }
 
 /* PIC0からの不完全割り込み対策

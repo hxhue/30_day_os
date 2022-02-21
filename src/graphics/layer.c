@@ -4,7 +4,7 @@
 #include <graphics/layer.h>
 #include <memory/memory.h>
 #include <support/type.h>
-#include <support/xlibc.h>
+#include <support/debug.h>
 #include <string.h>
 #include <stdio.h>
 
@@ -26,6 +26,51 @@ struct layer_ctl_t {
 };
 
 layer_ctl_t *g_lctl;
+
+typedef struct region_t {
+  int x0, y0, x1, y1;
+} region_t;
+
+static inline void full_redraw() {
+  raise_event(EVENT_REDRAW, 0);
+}
+
+// Try partial redrawing first, if that is not possible, fall back to full-
+// redrawing.
+// Requirements: for each region, x0 <= x1, y0 <= y1.
+static inline void partial_redraw2(region_t r0, region_t r1) {
+  int maxn = REDRAW_XY_FACTOR * 255;
+  if (r0.x1 >= maxn || r0.y1 >= maxn || r1.x1 >= maxn || r1.y1 >= maxn) {
+    full_redraw();
+    return;
+  }
+  // xprintf("partial_redraw2: (%d,%d,%d,%d), (%d,%d,%d,%d)\n", r0.x0, r0.y0, r0.x1, r0.y1, r1.x0, r1.y0, r1.x1, r1.y1);
+  const int f = REDRAW_XY_FACTOR;
+  raise_event(EVENT_REDRAW, ((r0.x0 / f) << 24) |
+                            ((r0.y0 / f) << 16) |
+                            (((r0.x1 + f - 1) / f) << 8) |
+                            (((r0.y1 + f - 1) / f)));
+  raise_event(EVENT_REDRAW, ((r1.x0 / f) << 24) |
+                            ((r1.y0 / f) << 16) |
+                            (((r1.x1 + f - 1) / f) << 8) |
+                            (((r1.y1 + f - 1) / f)));
+}
+
+// Try partial redrawing first, if that is not possible, fall back to full-
+// redrawing.
+// Requirements: x0 <= x1, y0 <= y1.
+static inline void partial_redraw(int x0, int y0, int x1, int y1) {
+  int maxn = REDRAW_XY_FACTOR * 255;
+  if (x1 >= maxn || y1 >= maxn) {
+    full_redraw();
+    return;
+  }
+  const int f = REDRAW_XY_FACTOR;
+  raise_event(EVENT_REDRAW, ((x0 / f) << 24) |
+                            ((y0 / f) << 16) |
+                            (((x1 + f - 1) / f) << 8) |
+                            (((y1 + f - 1) / f)));
+}
 
 static inline int layercmp(const layer_info_t *l, const layer_info_t *r) {
   return (l->rank != r->rank) ? (l->rank - r->rank) : l - r;
@@ -69,17 +114,11 @@ static int adjust_layer_pos(int index) {
   xassert(sizeof(void *) == 4);
 
   while (index + 1 < ntotal && (layercmp(layers[index], layers[index + 1]) > 0)) {
-    // layer_info_t *t = layers[index];
-    // layers[index] = layers[index + 1];
-    // layers[index + 1] = t;
     swapptr(&layers[index], &layers[index + 1]);
     ++index;
   }
   while (index > 0 && (layercmp(layers[index - 1], layers[index]) > 0)) {
     swapptr(&layers[index], &layers[index - 1]);
-    // layer_info_t *t = layers[index];
-    // layers[index] = layers[index - 1];
-    // layers[index - 1] = t;
     --index;
   }
   return index;
@@ -132,16 +171,29 @@ void set_layer_rank(layer_info_t *layer, i16 rank) {
 
   layer->rank = clamp_i16(rank, 0, USER_RANK_MAX);
 
-  if (adjust_layer_pos(index) != index) {
-    raise_event((event_t){EVENT_REDRAW, 0});
-  }
+  adjust_layer_pos(index);
+  partial_redraw(layer->x, layer->y, layer->x + layer->width,
+                 layer->y + layer->height);
 }
 
-void slide_layer(layer_info_t *layer, i32 x, i32 y) {
+// Changes the position of the layer.
+// Requirements: x >= 0, x < 65536, y >= 0, y < 65536
+void move_layer_to(layer_info_t *layer, i32 x, i32 y) {
+  int x0 = layer->x, y0 = layer->y;
   layer->x = x;
   layer->y = y;
-  if (layer->rank > 0) {
-    raise_event((event_t){.type = EVENT_REDRAW, .data = 0});
+
+  if (layer->rank <= 0) {
+    return;
+  }
+
+  int w = layer->width, h = layer->height;
+  int screen_size = g_boot_info.width * g_boot_info.height;
+  if (w * h * 3 < screen_size) {
+    partial_redraw2((region_t){x0, y0, x0 + w, y0 + h},
+                    (region_t){x,  y,  x + w,  y + h});
+  } else {
+    full_redraw();
   }
 }
 
@@ -160,43 +212,44 @@ int delete_layer(layer_info_t *layer) {
   g_lctl->ntotal--;
   layer->inuse = 0;
   if (layer->rank > 0) {
-    raise_event((event_t){EVENT_REDRAW, 0});
+    partial_redraw(layer->x, layer->y, layer->x + layer->width,
+                   layer->y + layer->height);
   }
   return 0;
 }
 
-// (x0, y0) (Include) -> (x1, y1) (Exclude) is the area on the screen you want 
-// to redraw. Its coordinates are based on the whole screen, not the possibly 
-// not-full-sreen layer.
-// TODO: range is not used now
-void redraw_layers(layer_info_t *base, int x0, int y0, int x1, int y1) {
+// (x0, y0) (Include) -> (x1, y1) (Exclude) is the area on the screen you want
+// to redraw. The coordinates are based on the whole screen, not any of the
+// possibly not-full-sreen layers.
+void redraw_layers(int x0, int y0, int x1, int y1) {
   i32 winh = g_boot_info.height, winw = g_boot_info.width;
   u8 *vram = g_lctl->vram;
+  x0 = clamp_i32(x0, 0, winw);
+  y0 = clamp_i32(y0, 0, winh);
+  x1 = clamp_i32(x1, 0, winw);
+  y1 = clamp_i32(y1, 0, winh);
 
-  int i = base ? find_layer(base) : 0;
-  if (i < 0) {
-    i = 0;
-  }
-  for (; i < g_lctl->ntotal; ++i) {
+  // xprintf("Drawing (%d,%d,%d,%d)\n", x0, y0, x1, y1);
+
+  int i;
+  for (i = 0; i < g_lctl->ntotal; ++i) {
     layer_info_t *layer = g_lctl->layers[i];
-
-    // char buf[128];
-    // sprintf(buf, "(redraw_layers) layer %d, size %dx%d", i, layer->width, layer->height);
-    // xputs(buf);
-    
+    int maxy = min_i32(layer->height, y1 - layer->y);
+    int maxx = min_i32(layer->width, x1 - layer->x);
+    int miny = max_i32(0, -layer->y);
+    int minx = max_i32(0, -layer->x);
     int x, y;
-    int maxy = clamp_i32(layer->height, 0, winh - layer->y);
-    int maxx = clamp_i32(layer->width, 0, winw - layer->x);
-    for (y = 0; y < maxy; ++y) {
+    for (y = miny; y < maxy; ++y) {
       u32 layer_offs = y * layer->width;
       u32 vram_offs = (y + layer->y) * winw;
-      for (x = 0; x < maxx; ++x) {
+      for (x = minx; x < maxx; ++x) {
         u8 color = layer->buf[layer_offs + x];
         if (color != RGB_TRANSPARENT)
           vram[vram_offs + x + layer->x] = color;
       }
     }
   }
+
   // Copy buffer to vga buffer
   memcpy((void *)g_boot_info.vram_addr, vram, winh * winw);
 }

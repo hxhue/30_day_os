@@ -7,7 +7,7 @@
 #include <stdio.h>
 #include <support/asm.h>
 #include <support/type.h>
-#include <support/xlibc.h>
+#include <support/debug.h>
 
 typedef struct event_queue_t {
   event_t *queue;
@@ -64,8 +64,8 @@ static inline void init_event_queue(event_queue_t *q) {
   xassert(q->queue);
 }
 
-void raise_event(event_t e) {
-  push_event(&g_event_queue, e);
+void raise_event(enum Event e, i32 data) {
+  push_event(&g_event_queue, (event_t){.type = e, .data = data});
 }
 
 void prepare_event_loop() {

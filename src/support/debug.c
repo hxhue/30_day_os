@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include <support/asm.h>
-#include <support/xlibc.h>
+#include <support/debug.h>
 
 static unsigned long rand_seed_next = 1;
 
