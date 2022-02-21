@@ -112,18 +112,18 @@ void put_string(layer_info_t *layer, Color color, int x0, int y0, const char *s)
 
 /* Comments are used to prevent tools from formating the code. */
 static u8 cursor_image[CURSOR_HEIGHT][CURSOR_WIDTH] = {
-    "***.............", //
+    "**..............", //
     "*OO**...........", //
-    "*OOOO***........", //
-    ".*OOOOOO**......", //
-    ".*OOOOOOOO*.....", //
-    ".*OOOOOOO*......", //
-    ".**OOOOO*.......", //
+    ".OOOO***........", //
+    ".*OOOOOO***.....", //
+    ".*OOOOOOOOO*....", //
+    "..*OOOOOO**.....", //
+    "..*OOOOO*.......", //
     "..*OOOOOO*......", //
-    "..*OO*OOOO*.....", //
-    "..*OO*.*OOO*....", //
-    "..*O*...*OOO*...", //
-    ".........*OOO*..", //
+    "...*OO*OOO*.....", //
+    "...*O*.*OOO*....", //
+    "...*O*..*OOO*...", //
+    "....*....*OOO*..", //
     "..........*OOO*.", //
     "...........*OOO*", //
     "............*OO*", //
