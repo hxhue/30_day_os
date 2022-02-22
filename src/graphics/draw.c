@@ -7,6 +7,7 @@
 #include <string.h>
 #include <support/asm.h>
 #include <support/type.h>
+#include <support/queue.h>
 #include <support/debug.h>
 
 // TODO: Mouse layer is still user layer
@@ -17,6 +18,7 @@ static layer_info_t *g_background_layer;
 
 void init_palette();
 void init_cursor();
+void init_images(); // Reusable images
 
 void init_background() {
   int w = g_boot_info.width;
@@ -57,11 +59,61 @@ void init_background() {
   g_background_layer = layer;
 }
 
-void init_display() {
-  init_palette();
-  init_layer_mgr();
-  init_background(); // Background layer
-  init_cursor();     // Cursor layer
+#define CLOSE_BTN_IMAGE_HEIGHT 14
+#define CLOSE_BTN_IMAGE_WIDTH  16
+
+static u8 close_btn_image[CLOSE_BTN_IMAGE_HEIGHT][CLOSE_BTN_IMAGE_WIDTH] = {
+    "OOOOOOOOOOOOOOO@", //
+    "OQQQQQQQQQQQQQ$@", //
+    "OQQQQQQQQQQQQQ$@", //
+    "OQQQ@@QQQQ@@QQ$@", //
+    "OQQQQ@@QQ@@QQQ$@", //
+    "OQQQQQ@@@@QQQQ$@", //
+    "OQQQQQQ@@QQQQQ$@", //
+    "OQQQQQ@@@@QQQQ$@", //
+    "OQQQQ@@QQ@@QQQ$@", //
+    "OQQQ@@QQQQ@@QQ$@", //
+    "OQQQQQQQQQQQQQ$@", //
+    "OQQQQQQQQQQQQQ$@", //
+    "O$$$$$$$$$$$$$$@", //
+    "@@@@@@@@@@@@@@@@"  //
+};
+
+void init_close_btn_image() {
+  int x, y;
+  for (y = 0; y < CLOSE_BTN_IMAGE_HEIGHT; ++y) {
+    for (x = 0; x < CLOSE_BTN_IMAGE_WIDTH; ++x) {
+      switch (close_btn_image[y][x]) {
+        case '@': close_btn_image[y][x] = RGB_BLACK;     break;
+        case '$': close_btn_image[y][x] = RGB_GRAY_DARK; break;
+        case 'Q': close_btn_image[y][x] = RGB_GRAY;      break;
+        default : close_btn_image[y][x] = RGB_WHITE;     break;
+      }
+    }
+  }
+}
+
+layer_info_t *make_window(int width, int height, const char *title) {
+  layer_info_t *layer = new_layer(width, height, 0, 0, 0);
+  
+  if (!layer || !layer->buf)
+    return (layer_info_t *)0; // Failure
+  
+  fill_rect(layer, RGB_GRAY, 0, 0, width, 1);
+  fill_rect(layer, RGB_WHITE, 1, 1, width-1, 2);
+  fill_rect(layer, RGB_GRAY, 0, 0, 1, height);
+  fill_rect(layer, RGB_WHITE, 1, 1, 2, height-1);
+  fill_rect(layer, RGB_GRAY_DARK, width-2, 1, width-1, height-1);
+  fill_rect(layer, RGB_BLACK, width-1, 0, width, height);
+  fill_rect(layer, RGB_GRAY, 2, 2, width-2, height-2);
+  fill_rect(layer, RGB_CYAN_DARK, 3, 3, width-3, 21);
+  fill_rect(layer, RGB_GRAY_DARK, 1, height-2, width-1, height-1);
+  fill_rect(layer, RGB_BLACK, 0, height-1, width, height);
+  put_string(layer, RGB_WHITE, 24, 4, title);
+  put_image(layer, &close_btn_image[0][0], CLOSE_BTN_IMAGE_WIDTH,
+            CLOSE_BTN_IMAGE_HEIGHT, width - 21, 5);
+
+  return layer;
 }
 
 #define HANKAKU_CHAR_WIDTH  8
@@ -135,8 +187,7 @@ static u8 cursor_image[CURSOR_HEIGHT][CURSOR_WIDTH] = {
     "ooooooooBBoo", //
 };
 
-void init_cursor() {
-  // Create cursor image
+void init_cursor_image() {
   int x, y;
   for (y = 0; y < CURSOR_HEIGHT; ++y) {
     for (x = 0; x < CURSOR_WIDTH; ++x) {
@@ -153,7 +204,14 @@ void init_cursor() {
       }
     }
   }
+}
 
+void init_images() {
+  init_close_btn_image();
+  init_cursor_image();
+}
+
+void init_cursor() {
   g_mouse_layer = new_layer(CURSOR_WIDTH, CURSOR_HEIGHT, g_boot_info.width / 2,
                             g_boot_info.height / 2, &cursor_image[0][0]);
   xassert(g_mouse_layer);
@@ -237,13 +295,52 @@ void put_image(layer_info_t *layer, const u8 *rect, int width, int height, int x
   }
 }
 
-void handle_event_redraw(int data) {
-  if (data == 0) {
+static inline void handle_event_redraw(const region_t *region) {
+  if (region->x0 <= region->x1 || region->y0 <= region->y1) {
     redraw_layers(0, 0, g_boot_info.width, g_boot_info.height);
   } else {
-    redraw_layers(((data >> 24) & 0xff) * REDRAW_XY_FACTOR,
-                  ((data >> 16) & 0xff) * REDRAW_XY_FACTOR,
-                  ((data >> 8) & 0xff) * REDRAW_XY_FACTOR,
-                  (data & 0xff) * REDRAW_XY_FACTOR);
+    redraw_layers(region->x0, region->y0, region->x1, region->y1);
   }
 }
+
+layer_info_t *window_layer;
+
+void init_display() {
+  init_palette();
+  init_layer_mgr();
+  init_images();
+  init_background(); // Background layer
+  init_cursor();     // Cursor layer
+
+  window_layer = make_window(160, 68, "Counter");
+  move_layer_to(window_layer, 80, 72);
+  set_layer_rank(window_layer, 2);
+}
+
+static queue_t redraw_msg_queue;
+
+#define REDRAW_MSG_QUEUE_SIZE 1024
+
+void init_redraw_event_queue() {
+  queue_init(&redraw_msg_queue, sizeof(region_t), REDRAW_MSG_QUEUE_SIZE);
+}
+
+void emit_redraw_event(region_t region) {
+  queue_push(&redraw_msg_queue, &region);
+}
+
+int redraw_event_queue_is_empty() {
+  return queue_is_empty(&redraw_msg_queue);
+}
+
+void redraw_event_queue_consume() {
+  region_t region;
+  queue_pop(&redraw_msg_queue, &region);
+  asm_sti();
+  handle_event_redraw(&region);
+}
+
+event_queue_t g_redraw_event_queue = {
+  .empty = redraw_event_queue_is_empty,
+  .consume = redraw_event_queue_consume
+};

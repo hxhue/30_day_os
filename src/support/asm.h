@@ -21,6 +21,7 @@ u32  asm_load_eflags();
 void asm_store_eflags( u32 eflags );
 void asm_load_gdtr( u32 limit, u32 addr );
 void asm_load_idtr( u32 limit, u32 addr );
+void asm_int_handler0x20();
 void asm_int_handler0x21();
 void asm_int_handler0x27();
 void asm_int_handler0x2c();

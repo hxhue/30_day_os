@@ -5,7 +5,12 @@
 extern "C" {
 #endif
 
-void handle_event_kbd(int data);
+#include <event/event.h>
+
+extern event_queue_t g_kbd_event_queue;
+
+void emit_keyboard_event(unsigned data);
+void init_keyboard_event_queue();
 
 #if (defined(__cplusplus))
 }

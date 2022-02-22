@@ -6,6 +6,7 @@
 #endif
 
 #include <support/type.h>
+#include <event/event.h>
 
 typedef enum RGBColor {
   RGB_BLACK = 0,
@@ -30,17 +31,21 @@ typedef enum RGBColor {
 void init_display();
 
 struct layer_info_t;
-
 void fill_rect(struct layer_info_t *layer, Color color, int x0, int y0, int x1, int y1);
-
 void put_image(struct layer_info_t *layer, const u8 *rect, int width, int height, int x, int y);
-
 void put_char(struct layer_info_t *layer, Color color, int x0, int y0, char ch);
-
 /* Line-wrap is not implemented. */
 void put_string(struct layer_info_t *layer, Color color, int x0, int y0, const char *s);
 
-void handle_event_redraw(int data); // Data is not used
+// void handle_event_redraw(unsigned data); // Data is not used
+
+typedef struct region_t {
+  int x0, y0, x1, y1;
+} region_t;
+
+extern event_queue_t g_redraw_event_queue;
+void init_redraw_event_queue();
+void emit_redraw_event(region_t region);
 
 #if (defined(__cplusplus))
 	}

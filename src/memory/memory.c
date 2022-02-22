@@ -1,16 +1,17 @@
 #include <memory/memory.h>
 #include <support/asm.h>
-#include <support/type.h>
 #include <support/debug.h>
+#include <support/type.h>
 
-#define EFLAGS_AC_BIT     0x00040000
+#define EFLAGS_AC_BIT 0x00040000
 #define CR0_CACHE_DISABLE 0x60000000
 
-#define MEM_SET_ENTRIES   4096
-#define MEM_SET_ADDR      0x003c0000
+#define MEM_SET_ENTRIES 4096
+#define MEM_SET_ADDR 0x003c0000
 
 typedef struct memory_entry_t {
-  u32 addr, size;
+  void *addr;
+  u32 size;
 } memory_entry_t;
 
 typedef struct memory_pool_t {
@@ -88,87 +89,91 @@ u32 get_max_mem_addr() {
 }
 
 void *alloc_mem(u32 size) {
-  unsigned int i, a;
+  unsigned int i;
+  void *a;
   memory_pool_t *mem = g_mem_set;
   for (i = 0; i < mem->frees; i++) {
     if (mem->entries[i].size >= size) {
       a = mem->entries[i].addr;
-      mem->entries[i].addr += size;
+      mem->entries[i].addr = (void *)((u32)mem->entries[i].addr + size);
       mem->entries[i].size -= size;
       if (mem->entries[i].size == 0) {
         mem->frees--;
         for (; i < mem->frees; i++) {
-          mem->entries[i] = mem->entries[i + 1]; 
+          mem->entries[i] = mem->entries[i + 1];
         }
       }
-      return (void *)a;
+      return a;
     }
   }
   return (void *)0;
 }
 
-int reclaim_mem(unsigned int addr, unsigned int size) {
+int reclaim_mem(void *addr, unsigned int size) {
+  if (addr == 0) {
+    return 0;
+  }
   memory_pool_t *mem = g_mem_set;
-	u32 i, j;
-	for (i = 0; i < mem->frees; i++) {
-		if (mem->entries[i].addr > addr) {
-			break;
-		}
-	}
-	/* free[i - 1].addr < addr < free[i].addr */
-	if (i > 0) {
-		if (mem->entries[i - 1].addr + mem->entries[i - 1].size == addr) {
-			mem->entries[i - 1].size += size;
-			if (i < mem->frees) {
-				if (addr + size == mem->entries[i].addr) {
-					mem->entries[i - 1].size += mem->entries[i].size;
-					mem->frees--;
-					for (; i < mem->frees; i++) {
-						mem->entries[i] = mem->entries[i + 1];
-					}
-				}
-			}
-			return 0; /* 成功終了 */
-		}
-	}
-	if (i < mem->frees) {
-		if (addr + size == mem->entries[i].addr) {
-			mem->entries[i].addr = addr;
-			mem->entries[i].size += size;
-			return 0; /* 成功終了 */
-		}
-	}
-	if (mem->frees < MEM_SET_ENTRIES) {
-		for (j = mem->frees; j > i; j--) {
-			mem->entries[j] = mem->entries[j - 1];
-		}
-		mem->frees++;
-		if (mem->maxfrees < mem->frees) {
-			mem->maxfrees = mem->frees; 
-		}
-		mem->entries[i].addr = addr;
-		mem->entries[i].size = size;
-		return 0; /* 成功終了 */
-	}
-	mem->losts++;
-	mem->lostsize += size;
-	return -1; /* 失敗終了 */
+  u32 i, j;
+  for (i = 0; i < mem->frees; i++) {
+    if (mem->entries[i].addr > addr) {
+      break;
+    }
+  }
+  /* free[i - 1].addr < addr < free[i].addr */
+  if (i > 0) {
+    if (mem->entries[i - 1].addr + mem->entries[i - 1].size == addr) {
+      mem->entries[i - 1].size += size;
+      if (i < mem->frees) {
+        if (addr + size == mem->entries[i].addr) {
+          mem->entries[i - 1].size += mem->entries[i].size;
+          mem->frees--;
+          for (; i < mem->frees; i++) {
+            mem->entries[i] = mem->entries[i + 1];
+          }
+        }
+      }
+      return 0; /* 成功終了 */
+    }
+  }
+  if (i < mem->frees) {
+    if (addr + size == mem->entries[i].addr) {
+      mem->entries[i].addr = addr;
+      mem->entries[i].size += size;
+      return 0; /* 成功終了 */
+    }
+  }
+  if (mem->frees < MEM_SET_ENTRIES) {
+    for (j = mem->frees; j > i; j--) {
+      mem->entries[j] = mem->entries[j - 1];
+    }
+    mem->frees++;
+    if (mem->maxfrees < mem->frees) {
+      mem->maxfrees = mem->frees;
+    }
+    mem->entries[i].addr = addr;
+    mem->entries[i].size = size;
+    return 0; /* 成功終了 */
+  }
+  mem->losts++;
+  mem->lostsize += size;
+  return -1; /* 失敗終了 */
 }
 
 u32 get_avail_mem() {
   memory_pool_t *mem = g_mem_set;
   unsigned int i, t = 0;
-	for (i = 0; i < mem->frees; i++) {
-		t += mem->entries[i].size;
-	}
-	return t;
+  for (i = 0; i < mem->frees; i++) {
+    t += mem->entries[i].size;
+  }
+  return t;
 }
 
 void init_mem_mgr() {
   g_mem_set = (memory_pool_t *)MEM_SET_ADDR;
-  reclaim_mem(0x00001000, 0x0009e000);
+  reclaim_mem((void *)0x00001000, 0x0009e000);
   u32 max_addr = get_max_mem_addr();
-  reclaim_mem(0x00400000, max_addr - 0x00400000);
+  reclaim_mem((void *)0x00400000, max_addr - 0x00400000);
 }
 
 void *alloc_mem_4k(u32 size) {
@@ -176,9 +181,7 @@ void *alloc_mem_4k(u32 size) {
   return alloc_mem(size);
 }
 
-int reclaim_mem_4k(u32 addr, u32 size) {
+int reclaim_mem_4k(void *addr, u32 size) {
   size = (size + 0xfff) & 0xfffff000;
   return reclaim_mem(addr, size);
 }
-
-

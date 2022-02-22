@@ -1,46 +1,15 @@
 #include <boot/boot.h>
 #include <boot/int.h>
 #include <event/event.h>
+#include <event/mouse.h>
+#include <event/keyboard.h>
+#include <event/counter.h>
 #include <graphics/draw.h>
 #include <support/asm.h>
 #include <support/type.h>
 #include <support/debug.h>
-
-#define PORT_KEYDAT           0x0060
-#define PORT_KEYSTA           0x0064
-#define PORT_KEYCMD           0x0064
-#define KEYSTA_SEND_NOT_READY 0x02
-#define KEYCMD_WRITE_MODE     0x60
-#define KBC_MODE              0x47
-#define KEYCMD_SENDTO_MOUSE   0xd4
-#define MOUSECMD_ENABLE       0xf4
-
-// kbdc is slow so CPU has to wait.
-// But kbdc was fast when I tested it in Qemu.
-static inline void wait_kbdc_ready() {
-  while (asm_in8(PORT_KEYSTA) & KEYSTA_SEND_NOT_READY) {
-    continue;
-  }
-}
-
-static inline void init_keyboard() {
-  wait_kbdc_ready();
-  // Send command: set mode (0x60).
-  asm_out8(PORT_KEYCMD, KEYCMD_WRITE_MODE);
-  wait_kbdc_ready();
-  // Send data: a mode that can use mouse (0x47).
-  // Mouse communicates through keyboard control circuit.
-  asm_out8(PORT_KEYDAT, KBC_MODE);
-}
-
-static inline void init_mouse() {
-  wait_kbdc_ready();
-  // Send command: transfer data to mouse
-  asm_out8(PORT_KEYCMD, KEYCMD_SENDTO_MOUSE);
-  wait_kbdc_ready();
-  // Send data: tell mouse to start working
-  asm_out8(PORT_KEYDAT, MOUSECMD_ENABLE);
-}
+#include <string.h>
+#include <boot/def.h>
 
 /**
  * CPU has only 1 port.
@@ -74,22 +43,18 @@ void init_pic() {
 
   asm_out8(PIC0_IMR, 0xfb);  /* PIC0: 11111011: allow PIC1 */
   asm_out8(PIC1_IMR, 0xff);  /* PIC1: Allow none */
-
-  asm_sti();                 // Allow interrupts
 }
 
-void init_devices() {
-  asm_out8(PIC0_IMR, 0xf9); /* 0b11111001, keyboard-1 and PIC1-2 */
-  asm_out8(PIC1_IMR, 0xef); /* 0b11101111, mouse-12 */
-  init_keyboard();
-  init_mouse();
+void int_handler0x20(u32 esp) {
+  asm_out8(PIC0_OCW2, 0x60 + 0x0); /* Accept interrupt 0x0 */
+  emit_counter_event(0);
 }
 
 /* PS/2 keyboard, 0x20 + 1 (kbd) = 0x21. esp is the 32-bit stack register. */
 void int_handler0x21(u32 esp) {
   asm_out8(PIC0_OCW2, 0x60 + 0x1); /* Accept interrupt 0x1 */
   u32 data = asm_in8(PORT_KEYDAT);
-  raise_event(EVENT_KEYBOARD, (i32)data);
+  emit_keyboard_event(data);
 }
 
 /* PS/2 mouse, 0x20 + 12 (mouse) = 0x2c. esp is the 32-bit stack register. */
@@ -97,7 +62,36 @@ void int_handler0x2c(u32 esp) {
   asm_out8(PIC1_OCW2, 0x60 + 0x4); // Tell PIC1 IRQ-12 (8+4) is received 
   asm_out8(PIC0_OCW2, 0x60 + 0x2); // Tell PIC0 IRQ-2 is received 
   u32 data = asm_in8(PORT_KEYDAT);
-  raise_event(EVENT_MOUSE, (i32)data);
+
+  // Every mouse event has 3 bytes. Since the port is 8 bit, a mouse event will
+  // cause 3 interrupts. The first byte a mouse will receive is 0xfa meaning
+  // that mouse initialization is ready.
+  static int mouse_state = 3;
+  static mouse_msg_t msg = {{0}};
+
+  switch(mouse_state) {
+    case 0:
+      // Move bits:  0x0~0x3
+      // Click bits: 0x8~0xf
+      if ((data & 0xc8) == 0x08)
+        msg.buf[mouse_state++] = data;
+      break;
+    case 1:
+      msg.buf[mouse_state++] = data;
+      break;
+    case 2:
+      msg.buf[2] = data;
+      mouse_state = 0;
+      emit_mouse_event(msg);
+      break;
+    case 3:
+      if (data == 0xfa)
+        mouse_state = 0;
+      break;
+    default:
+      xassert(!"Unreachable");
+      break;
+  }
 }
 
 /* PIC0からの不完全割り込み対策
@@ -109,4 +103,35 @@ void int_handler0x2c(u32 esp) {
  */
 void int_handler0x27(u32 esp) {
   asm_out8(PIC0_OCW2, 0x67); /* IRQ-07受付完了をPICに通知(7-1参照) */
+}
+
+/**
+ * offset: 32-bit address of handler function
+ * selector: n << 3: Segment n is where handler can be found.
+ */
+void set_idt_entry(gate_descriptor_t *entry, u32 offset, u32 selector, u16 ar) {
+  entry->offset_low = offset & 0xffff;
+  entry->offset_high = (offset >> 16) & 0xffff;
+  entry->access = ar & 0xff;
+  entry->dw_count = (ar >> 8) & 0xff;
+  entry->selector = selector;
+}
+
+void init_idt() {
+  /* IDT */
+  gate_descriptor_t *idt = (gate_descriptor_t *)0x0026f800;
+  memset(idt, 0, IDT_LIMIT + 1);
+  asm_load_idtr(IDT_LIMIT, 0x0026f800);
+  set_idt_entry(idt + 0x20, (u32)asm_int_handler0x20, 2 * 8, ACC_INT_ENTRY);
+  set_idt_entry(idt + 0x21, (u32)asm_int_handler0x21, 2 * 8, ACC_INT_ENTRY);
+  set_idt_entry(idt + 0x27, (u32)asm_int_handler0x27, 2 * 8, ACC_INT_ENTRY);
+  set_idt_entry(idt + 0x2c, (u32)asm_int_handler0x2c, 2 * 8, ACC_INT_ENTRY);
+}
+
+// Initialize IDT, PIC, and allow interrupts.
+// External interrupts (devices) are not enabled by now.
+void init_interrupt() {
+  init_idt();
+  init_pic();
+  asm_sti();
 }

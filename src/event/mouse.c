@@ -5,12 +5,9 @@
 #include <graphics/layer.h>
 #include <support/type.h>
 #include <support/debug.h>
+#include <support/queue.h>
 
 extern layer_info_t *g_mouse_layer;
-
-typedef struct mouse_msg_t {
-  u8 buf[3];
-} mouse_msg_t;
 
 // For a mouse initialized in this system, a packet consists 3 bytes.
 // (For other systems, mouse may have an optional 4 bytes)
@@ -59,37 +56,30 @@ static void inline handle_event_mouse_impl(mouse_msg_t msg) {
   (void)btn; // Silence warning
 }
 
-void handle_event_mouse(int data) {
-  // Every mouse event has 3 bytes. Since the port is 8 bit, a mouse event will
-  // cause 3 interrupts.
+static queue_t g_mouse_msg_queue;
 
-  // The first byte a mouse will receive is 0xfa meaning that mouse
-  // initialization is ready.
-  static int mouse_state = 3;
-  static mouse_msg_t msg = {{0}};
+#define MOUSE_EVENT_QUEUE_SIZE 1024
 
-  switch(mouse_state) {
-    case 0:
-      // Move bits:  0x0~0x3
-      // Click bits: 0x8~0xf
-      if ((data & 0xc8) == 0x08)
-        msg.buf[mouse_state++] = data;
-      break;
-    case 1:
-      msg.buf[mouse_state++] = data;
-      break;
-    case 2:
-      msg.buf[2] = data;
-      mouse_state = 0;
-      handle_event_mouse_impl(msg);
-      break;
-    case 3:
-      if (data == 0xfa)
-        mouse_state = 0;
-      break;
-    default:
-      xassert(!"Unreachable");
-      break;
-  }
+void init_mouse_event_queue() {
+  queue_init(&g_mouse_msg_queue, sizeof(mouse_msg_t), MOUSE_EVENT_QUEUE_SIZE);
 }
 
+void emit_mouse_event(mouse_msg_t msg) {
+  queue_push(&g_mouse_msg_queue, &msg);
+}
+
+static int mouse_msg_queue_empty() {
+  return queue_is_empty(&g_mouse_msg_queue);
+}
+
+static void mouse_msg_queue_consume() {
+  mouse_msg_t msg;
+  queue_pop(&g_mouse_msg_queue, &msg);
+  asm_sti();
+  handle_event_mouse_impl(msg);
+}
+
+event_queue_t g_mouse_event_queue = {
+  .empty = mouse_msg_queue_empty,
+  .consume = mouse_msg_queue_consume
+};

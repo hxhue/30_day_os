@@ -39,8 +39,14 @@ void move_layer_to(layer_info_t *layer, i32 x, i32 y);
 // 0 on success, -1 on error
 int delete_layer(layer_info_t *layer);
 
-// Redraw layers in given region
+// Actually redraw layers in given region.
 void redraw_layers(int x0, int y0, int x1, int y1);
+
+// Emit a partial redrawing event.
+void partial_redraw(int x0, int y0, int x1, int y1);
+
+// Emit a full redrawing event.
+void full_redraw();
 
 #if (defined(__cplusplus))
 	}

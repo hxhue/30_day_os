@@ -10,9 +10,11 @@
     GLOBAL _asm_load_eflags,      _asm_store_eflags
     GLOBAL _asm_load_gdtr,        _asm_load_idtr
     GLOBAL _asm_int_handler0x21,  _asm_int_handler0x27
-    GLOBAL _asm_int_handler0x2c,  _asm_load_cr0, _asm_store_cr0
+    GLOBAL _asm_int_handler0x2c,  _asm_int_handler0x20
+    GLOBAL _asm_load_cr0, _asm_store_cr0
 
     EXTERN _int_handler0x21, _int_handler0x27, _int_handler0x2c
+    EXTERN _int_handler0x20
 
 [SECTION .text]
 
@@ -137,6 +139,22 @@ _asm_load_idtr:            ; void asm_load_idtr(unsigned short limit, int addr)
 ; PUSH ESI
 ; PUSH EDI
 ; POPAD pops them in the reverse order.
+
+_asm_int_handler0x20:
+    PUSH	ES
+    PUSH	DS
+    PUSHAD
+    MOV		EAX,ESP
+    PUSH	EAX
+    MOV		AX,SS
+    MOV		DS,AX
+    MOV		ES,AX
+    CALL	_int_handler0x20
+    POP		EAX
+    POPAD
+    POP		DS
+    POP		ES
+    IRETD
 
 _asm_int_handler0x21:
     PUSH	ES

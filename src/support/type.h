@@ -14,6 +14,9 @@ typedef unsigned short     u16;
 typedef unsigned int       u32;
 typedef unsigned long long u64;
 
+#define QUEUE_STRUCT_TAG          0x10
+#define PRIORITY_QUEUE_STRUCT_TAG 0x20
+
 // Returns y in range [low, high].
 // If low > high, there is no garantee the result will be correct.
 static inline i32 clamp_i32(i32 x, i32 low, i32 high) {

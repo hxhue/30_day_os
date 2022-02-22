@@ -1,3 +1,5 @@
+#include "graphics/draw.h"
+#include "boot/boot.h"
 #include <boot/boot.h>
 #include <event/event.h>
 #include <graphics/draw.h>
@@ -27,49 +29,15 @@ struct layer_ctl_t {
 
 layer_ctl_t *g_lctl;
 
-typedef struct region_t {
-  int x0, y0, x1, y1;
-} region_t;
-
-static inline void full_redraw() {
-  raise_event(EVENT_REDRAW, 0);
+void full_redraw() {
+  region_t region = {0, 0, g_boot_info.width, g_boot_info.height};
+  emit_redraw_event(region);
 }
 
-// Try partial redrawing first, if that is not possible, fall back to full-
-// redrawing.
-// Requirements: for each region, x0 <= x1, y0 <= y1.
-static inline void partial_redraw2(region_t r0, region_t r1) {
-  int maxn = REDRAW_XY_FACTOR * 255;
-  if (r0.x1 >= maxn || r0.y1 >= maxn || r1.x1 >= maxn || r1.y1 >= maxn) {
-    full_redraw();
-    return;
-  }
-  // xprintf("partial_redraw2: (%d,%d,%d,%d), (%d,%d,%d,%d)\n", r0.x0, r0.y0, r0.x1, r0.y1, r1.x0, r1.y0, r1.x1, r1.y1);
-  const int f = REDRAW_XY_FACTOR;
-  raise_event(EVENT_REDRAW, ((r0.x0 / f) << 24) |
-                            ((r0.y0 / f) << 16) |
-                            (((r0.x1 + f - 1) / f) << 8) |
-                            (((r0.y1 + f - 1) / f)));
-  raise_event(EVENT_REDRAW, ((r1.x0 / f) << 24) |
-                            ((r1.y0 / f) << 16) |
-                            (((r1.x1 + f - 1) / f) << 8) |
-                            (((r1.y1 + f - 1) / f)));
-}
-
-// Try partial redrawing first, if that is not possible, fall back to full-
-// redrawing.
 // Requirements: x0 <= x1, y0 <= y1.
-static inline void partial_redraw(int x0, int y0, int x1, int y1) {
-  int maxn = REDRAW_XY_FACTOR * 255;
-  if (x1 >= maxn || y1 >= maxn) {
-    full_redraw();
-    return;
-  }
-  const int f = REDRAW_XY_FACTOR;
-  raise_event(EVENT_REDRAW, ((x0 / f) << 24) |
-                            ((y0 / f) << 16) |
-                            (((x1 + f - 1) / f) << 8) |
-                            (((y1 + f - 1) / f)));
+void partial_redraw(int x0, int y0, int x1, int y1) {
+  region_t region = {x0, y0, x1, y1};
+  emit_redraw_event(region);
 }
 
 static inline int layercmp(const layer_info_t *l, const layer_info_t *r) {
@@ -190,8 +158,8 @@ void move_layer_to(layer_info_t *layer, i32 x, i32 y) {
   int w = layer->width, h = layer->height;
   int screen_size = g_boot_info.width * g_boot_info.height;
   if (w * h * 3 < screen_size) {
-    partial_redraw2((region_t){x0, y0, x0 + w, y0 + h},
-                    (region_t){x,  y,  x + w,  y + h});
+    partial_redraw(x0, y0, x0 + w, y0 + h);
+    partial_redraw(x,  y,  x + w,  y + h);
   } else {
     full_redraw();
   }
