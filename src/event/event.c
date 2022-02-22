@@ -49,7 +49,7 @@ _Noreturn void event_loop() {
 
       extern layer_info_t *window_layer;
       char buf[64];
-      sprintf(buf, "%08u", g_counter.count);
+      sprintf(buf, "%08u", (unsigned)g_counter.count);
       fill_rect(window_layer, RGB_GRAY, 40, 28, 120, 44);
       put_string(window_layer, RGB_BLACK, 40, 28, buf);
       int x = window_layer->x, y = window_layer->y;

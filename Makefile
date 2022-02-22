@@ -31,6 +31,7 @@ FIND      := $(BIN)/find.exe
 MKDIR     := $(BIN)/mkdir.exe
 CC1       := $(BIN)/cc1.exe -Isrc -Isrc/libc -nostdinc -Os -Wall -quiet -std=c99 -Werror
 
+# O1~3: cannot link _memcpy. Only -Os can link _memcpy. Strange!
 C_FLAGS   := -m32 -Isrc -Isrc/libc -nostdinc -std=c11 -Os -Wall
 CXX_FLAGS := -m32 -Isrc -std=c++17 -Os -Wall
 

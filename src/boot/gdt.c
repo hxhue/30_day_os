@@ -4,6 +4,14 @@
 #include <support/type.h>
 #include <boot/def.h>
 
+typedef struct segment_descriptor_t {
+  u16 limit_low, base_low;
+  u8 base_mid, access;
+  u8 limit_high : 4;
+  u8 flag : 4;
+  u8 base_high;
+} segment_descriptor_t;
+
 /**
  * IDT      : 0x26f800～0x26ffff
  * GDT      : 0x270000～0x27ffff

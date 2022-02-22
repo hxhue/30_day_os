@@ -54,6 +54,12 @@ static inline void queue_peek(queue_t *q, void *out) {
   memcpy(out, q->queue + q->front * q->element_size, q->element_size);
 }
 
+// Get the pointer to the first element.
+static inline void *queue_get_first(queue_t *q) {
+  xassert(!queue_is_empty(q));
+  return q->queue + q->front * q->element_size;
+}
+
 // Returns 0 on success, -1 on failure.
 static inline int queue_push(queue_t *q, const void *in) {
   u32 next = (q->end + 1) % q->capacity;
@@ -62,7 +68,7 @@ static inline int queue_push(queue_t *q, const void *in) {
     q->end = next;
     return 0;
   }
-  xprintf("Warning: queue_push() on 0X%p failed because queue is full", q);
+  xprintf("Warning: queue_push() on 0X%p failed because queue is full\n", q);
   return -1;
 }
 

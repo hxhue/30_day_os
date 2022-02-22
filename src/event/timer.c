@@ -3,14 +3,10 @@
 #include <support/priority_queue.h>
 #include <event/event.h>
 
-// data: number of interrupts happened after the timer is initialized.
-void emit_timer_event(unsigned data) {
-  // The queue uses global counter information to check if a timer has expired.
-  // So this function is empty. It's only reserved for future usage... ?
-}
+counter_t g_counter = {.count = 0};
 
 typedef struct timer_t {
-  unsigned timeout;
+  unsigned long long timeout;
   void (*callback)(void);
 } timer_t;
 
@@ -33,18 +29,15 @@ void init_timer_event_queue() {
                       timer_swap, timer_greater);
 }
 
-void add_timer(unsigned interval, void (*callback)(void)) {
+void add_timer(unsigned long long interval, void (*callback)(void)) {
   timer_t timer = {.timeout = interval + g_counter.count, .callback = callback};
   priority_queue_push(&g_timer_queue, &timer);
 }
 
 int timer_event_queue_empty() {
-  if (priority_queue_is_empty(&g_timer_queue))
-    return 1;
-  
-  timer_t timer;
-  priority_queue_peek(&g_timer_queue, &timer);
-  return timer.timeout > g_counter.count;
+  return priority_queue_is_empty(&g_timer_queue) ||
+         ((const timer_t *)priority_queue_get_first(&g_timer_queue))->timeout >
+             g_counter.count;
 }
 
 void timer_event_queue_consume() {

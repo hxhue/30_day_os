@@ -8,6 +8,12 @@
 #include <string.h>
 #include <boot/def.h>
 
+typedef struct gate_descriptor_t {
+  u16 offset_low, selector;
+  u8 dw_count, access;
+  u16 offset_high;
+} gate_descriptor_t;
+
 /**
  * CPU has only 1 port.
  * x86 has 2 PIC, and 15 external interrupts.
@@ -42,11 +48,9 @@ void init_pic() {
   asm_out8(PIC1_IMR, 0xff);  /* PIC1: Allow none */
 }
 
-counter_t g_counter = {.count = 0};
-
 void int_handler0x20(u32 esp) {
   asm_out8(PIC0_OCW2, 0x60 + 0x0); /* Accept interrupt 0x0 */
-  emit_timer_event(++g_counter.count);
+  ++g_counter.count;
 }
 
 /* PS/2 keyboard, 0x20 + 1 (kbd) = 0x21. esp is the 32-bit stack register. */
