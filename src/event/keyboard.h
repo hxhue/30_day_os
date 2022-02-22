@@ -7,7 +7,7 @@ extern "C" {
 
 #include <event/event.h>
 
-extern event_queue_t g_kbd_event_queue;
+extern event_queue_t g_keyboard_event_queue;
 
 void emit_keyboard_event(unsigned data);
 void init_keyboard_event_queue();

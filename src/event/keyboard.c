@@ -34,7 +34,7 @@ static void keyboard_event_queue_consume() {
   handle_event_kbd_impl(keycode);
 }
 
-event_queue_t g_kbd_event_queue = {
+event_queue_t g_keyboard_event_queue = {
   .empty = keyboard_event_queue_empty,
   .consume = keyboard_event_queue_consume
 };

@@ -5,6 +5,8 @@
 extern "C" {
 #endif
 
+#include <support/type.h>
+
 typedef struct gate_descriptor_t {
   u16 offset_low, selector;
   u8 dw_count, access;

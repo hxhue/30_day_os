@@ -38,12 +38,12 @@ extern "C" {
 #define PIT_CTRL              0x0043
 #define PIT_CNT0              0x0040
 
-// TODO: remove timer_t
-typedef struct timer_t {
+// TODO: remove counter_t
+typedef struct counter_t {
   unsigned count;
-} timer_t;
+} counter_t;
 
-extern timer_t g_timer;
+extern counter_t g_counter;
 
 #if (defined(__cplusplus))
 }

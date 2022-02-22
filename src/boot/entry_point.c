@@ -23,15 +23,15 @@ void OS_startup(void) {
   // Initialize event loop data, e.g. event queue.
   prepare_event_loop();
 
-  // Set color and cursor; draw a background.
-  init_display();
-
   /*
    * Init devices and allow some external interrupts.
    * Once devices are initialized, events will come, so event queue must be
    * initialized before that.
    */
   init_devices();
+
+  // Set color and cursor; draw a background.
+  init_display();
 
   test();
 

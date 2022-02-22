@@ -48,14 +48,22 @@ static inline void queue_pop(queue_t *q, void *out) {
   }
 }
 
-static inline void queue_push(queue_t *q, const void *in) {
+// Get the first element, but do not remove it.
+static inline void queue_peek(queue_t *q, void *out) {
+  xassert(!queue_is_empty(q));
+  memcpy(out, q->queue + q->front * q->element_size, q->element_size);
+}
+
+// Returns 0 on success, -1 on failure.
+static inline int queue_push(queue_t *q, const void *in) {
   u32 next = (q->end + 1) % q->capacity;
   if (next != q->front) {
     memcpy(q->queue + q->end * q->element_size, in, q->element_size);
     q->end = next;
-  } else {
-    xprintf("Warning: queue_push() on 0X%p failed because queue is full", q);
+    return 0;
   }
+  xprintf("Warning: queue_push() on 0X%p failed because queue is full", q);
+  return -1;
 }
 
 #if (defined(__cplusplus))

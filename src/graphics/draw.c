@@ -1,5 +1,6 @@
 #include <boot/boot.h>
 #include <event/event.h>
+#include <event/timer.h>
 #include <graphics/draw.h>
 #include <graphics/layer.h>
 #include <memory/memory.h>
@@ -305,6 +306,11 @@ static inline void handle_event_redraw(const region_t *region) {
 
 layer_info_t *window_layer;
 
+void window_layer_timer_callback() {
+  fill_rect(window_layer, xrand() % RGB_TRANSPARENT, 1, 1, 32, 32);
+  add_timer(50, window_layer_timer_callback);
+}
+
 void init_display() {
   init_palette();
   init_layer_mgr();
@@ -315,6 +321,8 @@ void init_display() {
   window_layer = make_window(160, 68, "Counter");
   move_layer_to(window_layer, 80, 72);
   set_layer_rank(window_layer, 2);
+
+  add_timer(50, window_layer_timer_callback);
 }
 
 static queue_t redraw_msg_queue;

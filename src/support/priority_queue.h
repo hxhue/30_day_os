@@ -79,18 +79,19 @@ static inline void priority_queue_sink(priority_queue_t *q, u32 i) {
   }
 }
 
-static inline void priority_queue_push(priority_queue_t *q, const void *in) {
+// Returns 0 on success, -1 on failure.
+static inline int priority_queue_push(priority_queue_t *q, const void *in) {
   if (q->size == q->capacity) {
-    xprintf(
-        "Warning: priority_queue_push() on 0X%p failed because queue is full",
-        q);
-    return;
+    xprintf("Warning: priority_queue_push() on 0X%p failed "
+            "because queue is full", q);
+    return -1;
   }
   // The first element is skipped. For a heap with size "n", the last elements
   // is at index "n".
   u32 sz = ++q->size;
   memcpy(q->heap + q->element_size * sz, in, q->element_size);
   priority_queue_swim(q, sz);
+  return 0;
 }
 
 static inline void priority_queue_pop(priority_queue_t *q, void *out) {
@@ -101,6 +102,12 @@ static inline void priority_queue_pop(priority_queue_t *q, void *out) {
   q->swap(q->heap + q->element_size, out);
   q->swap(q->heap + q->element_size, q->heap + q->element_size * sz);
   priority_queue_sink(q, 1);
+}
+
+// Get the first element, but do not remove it.
+static inline void priority_queue_peek(priority_queue_t *q, void *out) {
+  xassert(!priority_queue_is_empty(q));
+  memcpy(out, q->heap + q->element_size, q->element_size);
 }
 
 #if (defined(__cplusplus))

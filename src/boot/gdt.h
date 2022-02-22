@@ -16,10 +16,6 @@ typedef struct segment_descriptor_t {
 } segment_descriptor_t;
 
 void init_gdt();
-//void set_gdt_entry(segment_descriptor_t *entry, u32 limit, u32 base, u8 access,
-//                   u8 flag);
-//void set_idt_entry(gate_descriptor_t *entry, u32 offset, u32 selector,
-//                   u16 access);
 
 #if (defined(__cplusplus))
 }

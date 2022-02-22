@@ -3,7 +3,7 @@
 #include <boot/def.h>
 #include <event/event.h>
 #include <event/keyboard.h>
-#include <event/counter.h>
+#include <event/timer.h>
 #include <event/mouse.h>
 #include <graphics/draw.h>
 #include <graphics/layer.h>
@@ -12,18 +12,18 @@
 #include <support/type.h>
 #include <support/queue.h>
 
-#define EVENT_QUEUE_COUNT 3
-static event_queue_t event_queues[EVENT_QUEUE_COUNT];
+static event_queue_t *event_queues[] = {
+  &g_mouse_event_queue,
+  &g_keyboard_event_queue,
+  &g_timer_event_queue,
+  &g_redraw_event_queue,
+};
 
 void prepare_event_loop() {
-//  init_event_queue(&g_event_queue);
-  // queue_init(&g_event_queue, sizeof(event_t), EVENT_QUEUE_SIZE);
   init_mouse_event_queue();
   init_keyboard_event_queue();
   init_redraw_event_queue();
-  event_queues[0] = g_mouse_event_queue;
-  event_queues[1] = g_kbd_event_queue;
-  event_queues[2] = g_redraw_event_queue;
+  init_timer_event_queue();
 }
 
 _Noreturn void event_loop() {
@@ -33,7 +33,7 @@ _Noreturn void event_loop() {
     // Search for a non-empty queue.
     int queue_index = -1, i;
     for (i = 0; i < sizeof(event_queues) / sizeof(event_queues[0]); ++i) {
-      if (!event_queues[i].empty()) {
+      if (!event_queues[i]->empty()) {
         queue_index = i;
         break;
       }
@@ -44,12 +44,12 @@ _Noreturn void event_loop() {
       // HLT after STI has a special effect: interrupts between them will stop
       // HLT from making CPU sleep. Calling asm_sti() and asm_hlt() separately
       // does not have this effect.
-      // asm_sti_hlt();
-      asm_sti();
+      asm_sti_hlt();
+      // asm_sti();
 
       extern layer_info_t *window_layer;
       char buf[64];
-      sprintf(buf, "%08u", g_timer.count);
+      sprintf(buf, "%08u", g_counter.count);
       fill_rect(window_layer, RGB_GRAY, 40, 28, 120, 44);
       put_string(window_layer, RGB_BLACK, 40, 28, buf);
       int x = window_layer->x, y = window_layer->y;
@@ -58,7 +58,7 @@ _Noreturn void event_loop() {
     }
 
     // asm_sti() is called inside the consume() function.
-    event_queues[queue_index].consume();
+    event_queues[queue_index]->consume();
   }
 }
 

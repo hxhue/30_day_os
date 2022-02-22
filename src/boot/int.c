@@ -1,10 +1,7 @@
-#include <boot/boot.h>
 #include <boot/int.h>
-#include <event/event.h>
 #include <event/mouse.h>
 #include <event/keyboard.h>
-#include <event/counter.h>
-#include <graphics/draw.h>
+#include <event/timer.h>
 #include <support/asm.h>
 #include <support/type.h>
 #include <support/debug.h>
@@ -45,9 +42,11 @@ void init_pic() {
   asm_out8(PIC1_IMR, 0xff);  /* PIC1: Allow none */
 }
 
+counter_t g_counter = {.count = 0};
+
 void int_handler0x20(u32 esp) {
   asm_out8(PIC0_OCW2, 0x60 + 0x0); /* Accept interrupt 0x0 */
-  emit_counter_event(0);
+  emit_timer_event(++g_counter.count);
 }
 
 /* PS/2 keyboard, 0x20 + 1 (kbd) = 0x21. esp is the 32-bit stack register. */
