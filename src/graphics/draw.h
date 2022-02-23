@@ -42,7 +42,7 @@ typedef struct region_t {
 
 extern event_queue_t g_redraw_event_queue;
 void init_redraw_event_queue();
-void emit_redraw_event(region_t region);
+void emit_redraw_event(int x0, int y0, int x1, int y1);
 
 #if (defined(__cplusplus))
 	}

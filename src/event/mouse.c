@@ -50,7 +50,7 @@ static void inline handle_event_mouse_impl(mouse_msg_t msg) {
   int new_y = clamp_i32(g_mouse_layer->y + mouse_y, 0, g_boot_info.height - 1);
 
   if (mouse_x || mouse_y) {
-    move_layer_to(g_mouse_layer, new_x, new_y);
+    layer_move_to(g_mouse_layer, new_x, new_y);
   }
 
   (void)btn; // Silence warning

@@ -36,7 +36,7 @@ static inline int layercmp(const layer_info_t *l, const layer_info_t *r) {
 // Returns index of the layer ( -1 on failure).
 // Binary search is useless because the moving operation's time complexity
 // is O(n).
-static int find_layer(layer_info_t *l) {
+static int layer_find(layer_info_t *l) {
   layer_info_t **layers = g_lctl->layers;
   int i = 0, ntotal = g_lctl->ntotal;
   for (; i < ntotal; ++i) {
@@ -64,7 +64,7 @@ void init_layer_mgr() {
 // changed. All other layers have been ordered by their ranks. This function
 // adjusts the index of the specified layer by swapping elements, and returns
 // the new index of the layer.
-static int adjust_layer_pos(int index) {
+static int layer_adjust_pos(int index) {
   layer_info_t **layers = g_lctl->layers;
   u32 ntotal = g_lctl->ntotal;
 
@@ -81,7 +81,7 @@ static int adjust_layer_pos(int index) {
   return index;
 }
 
-layer_info_t *new_layer(int width, int height, int x, int y, u8 *buf) {
+layer_info_t *layer_new(int width, int height, int x, int y, u8 *buf) {
   xassert(width > 0 && height > 0);
   int i;
   for (i = 0; i < MAX_LAYER_NUM; ++i) {
@@ -111,7 +111,7 @@ layer_info_t *new_layer(int width, int height, int x, int y, u8 *buf) {
       // A new layer is invisible.
       // Although we insert it into the array to keep the order,
       // we don't need to redraw the screen.
-      adjust_layer_pos(index);
+      layer_adjust_pos(index);
 
       return layer;
     }
@@ -119,23 +119,23 @@ layer_info_t *new_layer(int width, int height, int x, int y, u8 *buf) {
   return (layer_info_t *)0;
 }
 
-void set_layer_rank(layer_info_t *layer, i16 rank) {
+void layer_set_rank(layer_info_t *layer, i16 rank) {
   xassert(layer);
   
   // Find index. If rank is changed before this, we'll be unable
   // to find the location because order is violated.
-  int index = find_layer(layer);
+  int index = layer_find(layer);
 
   layer->rank = clamp_i16(rank, 0, USER_RANK_MAX);
 
-  adjust_layer_pos(index);
-  emit_redraw_event((region_t){layer->x, layer->y, layer->x + layer->width,
-                               layer->y + layer->height});
+  layer_adjust_pos(index);
+  emit_redraw_event(layer->x, layer->y, layer->x + layer->width,
+                    layer->y + layer->height);
 }
 
 // Changes the position of the layer.
 // Requirements: x >= 0, x < 65536, y >= 0, y < 65536
-void move_layer_to(layer_info_t *layer, i32 x, i32 y) {
+void layer_move_to(layer_info_t *layer, i32 x, i32 y) {
   int x0 = layer->x, y0 = layer->y;
   layer->x = x;
   layer->y = y;
@@ -147,16 +147,16 @@ void move_layer_to(layer_info_t *layer, i32 x, i32 y) {
   int w = layer->width, h = layer->height;
   int screen_size = g_boot_info.width * g_boot_info.height;
   if (w * h * 3 < screen_size) {
-    emit_redraw_event((region_t){x0, y0, x0 + w, y0 + h});
-    emit_redraw_event((region_t){x,  y,  x + w,  y + h});
+    emit_redraw_event(x0, y0, x0 + w, y0 + h);
+    emit_redraw_event(x,  y,  x + w,  y + h);
   } else {
-    emit_redraw_event((region_t){0, 0, g_boot_info.width, g_boot_info.height});
+    emit_redraw_event(0, 0, g_boot_info.width, g_boot_info.height);
   }
 }
 
-int delete_layer(layer_info_t *layer) {
+int layer_free(layer_info_t *layer) {
   // Find this layer and move all layers behind it forward.
-  int index = find_layer(layer);
+  int index = layer_find(layer);
   if (index < 0) {
     return -1;
   }
@@ -169,8 +169,8 @@ int delete_layer(layer_info_t *layer) {
   g_lctl->ntotal--;
   layer->inuse = 0;
   if (layer->rank > 0) {
-    emit_redraw_event((region_t){layer->x, layer->y, layer->x + layer->width,
-                                 layer->y + layer->height});
+    emit_redraw_event(layer->x, layer->y, layer->x + layer->width,
+                      layer->y + layer->height);
   }
   return 0;
 }
@@ -178,7 +178,7 @@ int delete_layer(layer_info_t *layer) {
 // (x0, y0) (Include) -> (x1, y1) (Exclude) is the area on the screen you want
 // to redraw. The coordinates are based on the whole screen, not any of the
 // possibly not-full-sreen layers.
-void redraw_layers(int x0, int y0, int x1, int y1) {
+void layer_redraw_all(int x0, int y0, int x1, int y1) {
   i32 winh = g_boot_info.height, winw = g_boot_info.width;
   u8 *vram = g_lctl->vram;
   x0 = clamp_i32(x0, 0, winw);
@@ -186,7 +186,7 @@ void redraw_layers(int x0, int y0, int x1, int y1) {
   x1 = clamp_i32(x1, 0, winw);
   y1 = clamp_i32(y1, 0, winh);
 
-  // xprintf("Drawing (%d,%d,%d,%d)\n", x0, y0, x1, y1);
+  xprintf("Drawing 0X%p:(%d,%d,%d,%d)\n", vram, x0, y0, x1, y1);
 
   int i;
   for (i = 0; i < g_lctl->ntotal; ++i) {

@@ -28,19 +28,19 @@ void init_layer_mgr();
 
 // Allocates an invisible layer. If "buf" == null, a new buffer will be
 // allocated by the function.
-layer_info_t *new_layer(int width, int height, int x, int y, u8 *buf);
+layer_info_t *layer_new(int width, int height, int x, int y, u8 *buf);
 
 // Set rank of the layer so it can be drawn. "rank" == 0 means invisible.
 // Larger rank means being drawn later.
-void set_layer_rank(layer_info_t *layer, i16 rank);
+void layer_set_rank(layer_info_t *layer, i16 rank);
 
-void move_layer_to(layer_info_t *layer, i32 x, i32 y);
+void layer_move_to(layer_info_t *layer, i32 x, i32 y);
 
 // 0 on success, -1 on error
-int delete_layer(layer_info_t *layer);
+int layer_free(layer_info_t *layer);
 
 // Redraw layers in given region.
-void redraw_layers(int x0, int y0, int x1, int y1);
+void layer_redraw_all(int x0, int y0, int x1, int y1);
 
 #if (defined(__cplusplus))
 	}

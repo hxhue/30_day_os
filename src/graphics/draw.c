@@ -25,7 +25,7 @@ void init_background() {
   int w = g_boot_info.width;
   int h = g_boot_info.height;
 
-  layer_info_t *layer = new_layer(w, h, 0, 0, (u8 *)0);
+  layer_info_t *layer = layer_new(w, h, 0, 0, (u8 *)0);
   xassert(layer);
 
   draw_rect(layer, RGB_AQUA_DARK, 0,      0,          w,  h - 28);
@@ -55,7 +55,7 @@ void init_background() {
   sprintf(buf, "rand: %d", xrand());
   draw_string(layer, RGB_WHITE, 0, 96, buf);
 
-  set_layer_rank(layer, 1);
+  layer_set_rank(layer, 1);
 
   g_background_layer = layer;
 }
@@ -95,7 +95,7 @@ void init_close_btn_image() {
 }
 
 layer_info_t *make_window(int width, int height, const char *title) {
-  layer_info_t *layer = new_layer(width, height, 0, 0, 0);
+  layer_info_t *layer = layer_new(width, height, 0, 0, 0);
   
   if (!layer || !layer->buf)
     return (layer_info_t *)0; // Failure
@@ -213,10 +213,10 @@ void init_images() {
 }
 
 void init_cursor() {
-  g_mouse_layer = new_layer(CURSOR_WIDTH, CURSOR_HEIGHT, g_boot_info.width / 2,
+  g_mouse_layer = layer_new(CURSOR_WIDTH, CURSOR_HEIGHT, g_boot_info.width / 2,
                             g_boot_info.height / 2, &cursor_image[0][0]);
   xassert(g_mouse_layer);
-  set_layer_rank(g_mouse_layer, MOUSE_LAYER_RANK);
+  layer_set_rank(g_mouse_layer, MOUSE_LAYER_RANK);
 }
 
 /* Registers 16 predefined rgb colors by writing the first color index, and then
@@ -224,7 +224,7 @@ void init_cursor() {
 static inline void set_palette(int start, int end, const u8 *rgb) {
   int i;
   u32 eflags = asm_load_eflags(); /* Bit 9 contains interrupt permission. */
-  asm_cli();                  /* Clear interrupt permission. */
+  asm_cli();                      /* Clear interrupt permission. */
   asm_out8(0x03c8, start);
   for (i = start; i <= end; i++) {
     asm_out8(0x03c9, rgb[0] / 4);
@@ -297,10 +297,10 @@ void draw_image(layer_info_t *layer, const u8 *rect, int width, int height, int 
 }
 
 static inline void handle_event_redraw(const region_t *region) {
-  if (region->x0 <= region->x1 || region->y0 <= region->y1) {
-    redraw_layers(0, 0, g_boot_info.width, g_boot_info.height);
+  if (region->x0 >= region->x1 || region->y0 >= region->y1) {
+    layer_redraw_all(0, 0, g_boot_info.width, g_boot_info.height);
   } else {
-    redraw_layers(region->x0, region->y0, region->x1, region->y1);
+    layer_redraw_all(region->x0, region->y0, region->x1, region->y1);
   }
 }
 
@@ -308,7 +308,8 @@ layer_info_t *window_layer;
 
 void window_layer_timer_callback() {
   draw_rect(window_layer, xrand() % RGB_TRANSPARENT, 1, 1, 32, 32);
-  add_timer(50, window_layer_timer_callback);
+  emit_redraw_event(1, 1, 32, 32);
+  add_timer(100, window_layer_timer_callback);
 }
 
 void init_display() {
@@ -319,8 +320,8 @@ void init_display() {
   init_cursor();     // Cursor layer
 
   window_layer = make_window(160, 68, "Counter");
-  move_layer_to(window_layer, 80, 72);
-  set_layer_rank(window_layer, 2);
+  layer_move_to(window_layer, 80, 72);
+  layer_set_rank(window_layer, 2);
 
   add_timer(50, window_layer_timer_callback);
 }
@@ -333,12 +334,13 @@ void init_redraw_event_queue() {
   queue_init(&redraw_msg_queue, sizeof(region_t), REDRAW_MSG_QUEUE_SIZE);
 }
 
-void emit_redraw_event(region_t region) {
-  if (queue_push_no_warning(&redraw_msg_queue, &region) < 0) {
+void emit_redraw_event(int x0, int y0, int x1, int y1) {
+  region_t region = {x0, y0, x1, y1};
+  if (queue_push(&redraw_msg_queue, &region) < 0) {
     // If queue is full, combine all messages to a single one.
     queue_clear(&redraw_msg_queue);
-    region_t region = {0, 0, g_boot_info.width, g_boot_info.height};
-    queue_push(&redraw_msg_queue, &region);
+    region_t full_region = {0, 0, g_boot_info.width, g_boot_info.height};
+    queue_push(&redraw_msg_queue, &full_region);
   }
 }
 

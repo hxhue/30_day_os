@@ -48,6 +48,10 @@ void init_pic() {
   asm_out8(PIC1_IMR, 0xff);  /* PIC1: Allow none */
 }
 
+// NOTE:
+// emit_*() are constant-time functions and are safe to call in interrupt 
+// handlers.
+
 void int_handler0x20(u32 esp) {
   asm_out8(PIC0_OCW2, 0x60 + 0x0); /* Accept interrupt 0x0 */
   ++g_counter.count;

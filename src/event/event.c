@@ -26,7 +26,7 @@ void prepare_event_loop() {
   init_timer_event_queue();
 }
 
-_Noreturn void event_loop() {
+void event_loop() {
   for (;;) {
     asm_cli();
 
@@ -53,7 +53,7 @@ _Noreturn void event_loop() {
       draw_rect(window_layer, RGB_GRAY, 40, 28, 120, 44);
       draw_string(window_layer, RGB_BLACK, 40, 28, buf);
       int x = window_layer->x, y = window_layer->y;
-      emit_redraw_event((region_t){x + 40, y + 28, x + 120, y + 44});
+      emit_redraw_event(x + 40, y + 28, x + 120, y + 44);
       continue;
     }
 
@@ -92,12 +92,9 @@ static inline void init_mouse() {
 static inline void init_counter() {
   // Notify IRQ-0 Cycle change
   asm_out8(PIT_CTRL, 0X34);
-  // 0x2e9c == 11932: An interrupt every 10 ms
-  // 0x0ba7         : An interrupt every 2.5 ms
-  // This is calculated by frequency of the clock. Since the interrupt stops the
-  // counter? (IDK), the time it actually takes will be a bit more than 2.5 ms.
-  asm_out8(PIT_CNT0, 0xa7);
-  asm_out8(PIT_CNT0, 0x0b);
+  // PIT: 1.193182 MHz
+  asm_out8(PIT_CNT0, 0x4e);
+  asm_out8(PIT_CNT0, 0x17); // 0x174e -> about 5 ms
 }
 
 // Initialize devices, so they can handle interrupts and emit events.

@@ -19,7 +19,7 @@ typedef struct event_queue_t {
 
 void init_devices();
 void prepare_event_loop();
-_Noreturn void event_loop();
+void event_loop();
 
 #if (defined(__cplusplus))
 }
