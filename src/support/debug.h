@@ -36,7 +36,7 @@ static inline int xputs(const char *str) {
 }
 #define xprintf(fmt, ...)                                                      \
   do {                                                                         \
-    char xprintf_buf[256];                                                     \
+    char xprintf_buf[512];                                                     \
     sprintf(xprintf_buf, fmt, ##__VA_ARGS__);                                  \
     debug_write_console(xprintf_buf);                                          \
   } while (0)

@@ -186,7 +186,7 @@ void layer_redraw_all(int x0, int y0, int x1, int y1) {
   x1 = clamp_i32(x1, 0, winw);
   y1 = clamp_i32(y1, 0, winh);
 
-  xprintf("Drawing 0X%p:(%d,%d,%d,%d)\n", vram, x0, y0, x1, y1);
+  // xprintf("Drawing 0X%p:(%d,%d,%d,%d)\n", vram, x0, y0, x1, y1);
 
   int i;
   for (i = 0; i < g_lctl->ntotal; ++i) {

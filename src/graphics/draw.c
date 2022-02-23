@@ -255,6 +255,7 @@ void init_palette() {
       0x00, 0x84, 0x84, /* 14:暗い水色 */
       0x84, 0x84, 0x84  /* 15:暗い灰色 */
   };
+  // TODO: Using VBE now
   set_palette(0, 15, table_rgb);
 }
 
@@ -330,13 +331,15 @@ static queue_t redraw_msg_queue;
 
 #define REDRAW_MSG_QUEUE_SIZE 6
 
+// Size of redraw_msg_queue is small, since it is designed to overflow easily so
+// we can know when we should combine redrawing events.
 void init_redraw_event_queue() {
   queue_init(&redraw_msg_queue, sizeof(region_t), REDRAW_MSG_QUEUE_SIZE);
 }
 
 void emit_redraw_event(int x0, int y0, int x1, int y1) {
   region_t region = {x0, y0, x1, y1};
-  if (queue_push(&redraw_msg_queue, &region) < 0) {
+  if (queue_push_no_warning(&redraw_msg_queue, &region) < 0) {
     // If queue is full, combine all messages to a single one.
     queue_clear(&redraw_msg_queue);
     region_t full_region = {0, 0, g_boot_info.width, g_boot_info.height};

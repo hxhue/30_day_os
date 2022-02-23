@@ -9,10 +9,11 @@
 
 boot_info_t g_boot_info;
 
-void test();
+void fix_vbe_info();
 
 void OS_startup(void) {
   g_boot_info = *(boot_info_t *)0x0ff0;
+  fix_vbe_info();
 
   init_gdt();
 
@@ -33,36 +34,29 @@ void OS_startup(void) {
   // Set color and cursor; draw a background.
   init_display();
 
-  test();
-
   event_loop();
 
   xassert(!"Unreachable");
 }
 
-int integer_less(void *a, void *b) {
-  return *(int *)a < *(int *)b;
-}
+// int integer_less(void *a, void *b) {
+//   return *(int *)a < *(int *)b;
+// }
 
-void integer_swap(void *a, void *b) {
-  int t = *(int *)a;
-  *(int *)a = *(int *)b;
-  *(int *)b = t;
-}
+// void integer_swap(void *a, void *b) {
+//   int t = *(int *)a;
+//   *(int *)a = *(int *)b;
+//   *(int *)b = t;
+// }
 
-void test() {
-  priority_queue_t q;
-  priority_queue_init(&q, sizeof(int), 64, integer_swap, integer_less);
-  int A[] = {32, 4, 1, -7, 2, 3, 4, 77, 23};
-  int i = 0, n = sizeof(A)/sizeof(int);
-  for (; i < n; ++i) {
-    priority_queue_push(&q, &A[i]);
-  }
-  xprintf("priority_queue: ");
-  while (!priority_queue_is_empty(&q)) {
-    int a;
-    priority_queue_pop(&q, &a);
-    xprintf("%d ", a);
-  }
-  xprintf("\n");
+void fix_vbe_info() {
+  vbe_mode_info_t *vbe_info = (vbe_mode_info_t *)0x1000;
+  xprintf("VBE info:\n");
+  xprintf("\twidth: %d, height: %d\n", vbe_info->width, vbe_info->height);
+  xprintf("\tstart of vram: 0X%08X\n", vbe_info->framebuffer);
+  xprintf("\tbits per pixel: %d\n", vbe_info->bpp);
+  g_boot_info.vram_addr = vbe_info->framebuffer;
+  g_boot_info.width = vbe_info->width;
+  g_boot_info.height = vbe_info->height;
+  *(boot_info_t *)0x0ff0 = g_boot_info;
 }

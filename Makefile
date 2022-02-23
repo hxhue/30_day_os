@@ -32,12 +32,13 @@ MKDIR     := $(BIN)/mkdir.exe
 CC1       := $(BIN)/cc1.exe -Isrc -Isrc/libc -nostdinc -Os -Wall -quiet -std=c99 -Werror
 
 # O1~3: cannot link _memcpy. Only -Os can link _memcpy. Strange!
-C_FLAGS   := -m32 -Isrc -Isrc/libc -nostdinc -std=c11 -Os -Wall
-CXX_FLAGS := -m32 -Isrc -std=c++17 -Os -Wall
+C_FLAGS   = -m32 -Isrc -Isrc/libc -nostdinc -std=c11 -Os -Wall
+CXX_FLAGS = -m32 -Isrc -std=c++17 -Os -Wall
 
-QEMU_IMG   = $(BUILD)/os.img
-QEMU_RUN   = qemu-system-x86_64 -L . -m 32 -rtc base=localtime -vga std \
-			-drive "file=$(QEMU_IMG),format=raw,if=floppy" -accel hax -serial stdio
+QEMU_IMG  := $(BUILD)/os.img
+# QEMU_RUN  := $(BIN)/qemu/qemu.exe -L . -m 32 -localtime -std-vga -fda $(QEMU_IMG)
+QEMU_RUN  := qemu-system-x86_64 -m 32 -rtc base=localtime -vga std \
+	-drive "file=$(QEMU_IMG),format=raw,if=floppy" -serial stdio --no-reboot -accel hax
 
 # Get all C files in src/*/*
 C_SOURCES  := $(shell $(FIND) src/ -mindepth 2 -name "*.c")

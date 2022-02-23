@@ -4,32 +4,53 @@ DSKCAC        EQU  0x00100000		; ディスクキャッシュの場所
 DSKCAC0       EQU  0x00008000		; ディスクキャッシュの場所（リアルモード）
 
 ; BOOT_INFO関係
-CYLS	EQU		0x0ff0			; ブートセクタが設定する
-LEDS	EQU		0x0ff1
-VMODE	EQU		0x0ff2			; 色数に関する情報。何ビットカラーか？
-SCRNX	EQU		0x0ff4			; 解像度のX
-SCRNY	EQU		0x0ff6			; 解像度のY
-VRAM	EQU		0x0ff8			; グラフィックバッファの開始番地
+CYLS	    EQU  0x0ff0    ; ブートセクタが設定する
+LEDS	    EQU  0x0ff1    
+VMODE	    EQU  0x0ff2    ; 色数に関する情報。何ビットカラーか？
+SCRNX	    EQU  0x0ff4    ; 解像度のX
+SCRNY	    EQU  0x0ff6    ; 解像度のY
+VRAM	    EQU  0x0ff8    ; グラフィックバッファの開始番地
 
-		ORG		0xc200			; このプログラムがどこに読み込まれるのか
+VBE_INFO  EQU  0x1000    ; 256 bytes. See boot.h for more.
+VBE_MODE  EQU  0x4103
+
+		ORG		0xc200        ; このプログラムがどこに読み込まれるのか
 
 ; 画面モードを設定
 
-		MOV		AL,0x13			; VGAグラフィックス、320x200x8bitカラー
-		MOV		AH,0x00
-		INT		0x10
-		MOV		BYTE [VMODE],8	; 画面モードをメモする（C言語が参照する）
-		MOV		WORD [SCRNX],320
-		MOV		WORD [SCRNY],200
-		MOV		DWORD [VRAM],0x000a0000
-
-		; MOV		BX,0x4101		; VBEの640x480x8bitカラー
-		; MOV		AX,0x4f02
+		; MOV		AL,0x13			; VGAグラフィックス、320x200x8bitカラー
+		; MOV		AH,0x00
 		; INT		0x10
 		; MOV		BYTE [VMODE],8	; 画面モードをメモする（C言語が参照する）
-		; MOV		WORD [SCRNX],640
-		; MOV		WORD [SCRNY],480
-		; MOV		DWORD [VRAM],0xe0000000
+		; MOV		WORD [SCRNX],320
+		; MOV		WORD [SCRNY],200
+		; MOV		DWORD [VRAM],0x000a0000
+
+		MOV   AX,0
+		MOV   ES,AX
+    ; Assume the mode exists
+		; Get VBE information
+		MOV   AX,0x4f01
+		MOV   CX,VBE_MODE
+		MOV   DI,VBE_INFO
+		INT   0x10
+		; Set VBE mode
+		MOV		BX,VBE_MODE		  ; VBEの640x480x8bitカラー
+		MOV		AX,0x4f02
+		INT		0x10
+		; Boot info is wrong. Maybe VESA version is different?
+		; We'll fix boot info later by checking VBE_INFO.
+		MOV		BYTE [VMODE],8	; 画面モードをメモする（C言語が参照する）
+		MOV		WORD [SCRNX],800
+		MOV		WORD [SCRNY],600
+		MOV		DWORD [VRAM],0xe000000
+		; Assume the setting succeeded and ignore the return status
+		; Set palette. (Useless. Don't know why.)
+		MOV   DI,VBE_COLOR_TABLE ; table address
+		MOV   AX,0x4f09          ; function number
+		MOV   BL,0x00            ; select "set"
+		MOV   CX,16              ; number of registers to update
+		MOV   DX,0               ; first register to update
 
 ; キーボードのLED状態をBIOSに教えてもらう
 
@@ -64,8 +85,6 @@ VRAM	EQU		0x0ff8			; グラフィックバッファの開始番地
 ; プロテクトモード移行
 ; Real mode: addr = seg_reg * 16 + offset
 ; Protected mode: addr = (GDT_start + seg_reg).base + offset
-
-; nasm does not recognize this
 [INSTRSET "i486p"]		    ; 486の命令まで使いたいという記述
 
 		LGDT	[GDTR0]			    ; 暫定GDTを設定
@@ -148,6 +167,25 @@ memcpy:
 ; memcpyはアドレスサイズプリフィクスを入れ忘れなければ、ストリング命令でも書ける
 
 		ALIGNB	16
+
+VBE_COLOR_TABLE:
+		; 4th byte: alignment or alpha?
+		DB    0x00, 0x00, 0x00, 0x00  ;  0:黒
+		DB    0xff, 0x00, 0x00, 0x00  ;  1:明るい赤
+		DB    0x00, 0xff, 0x00, 0x00  ;  2:明るい緑
+		DB    0xff, 0xff, 0x00, 0x00  ;  3:明るい黄色
+		DB    0x00, 0x00, 0xff, 0x00  ;  4:明るい青
+		DB    0xff, 0x00, 0xff, 0x00  ;  5:明るい紫
+		DB    0x00, 0xff, 0xff, 0x00  ;  6:明るい水色
+		DB    0xff, 0xff, 0xff, 0x00  ;  7:白
+		DB    0xc6, 0xc6, 0xc6, 0x00  ;  8:明るい灰色
+		DB    0x84, 0x00, 0x00, 0x00  ;  9:暗い赤
+		DB    0x00, 0x84, 0x00, 0x00  ; 10:暗い緑
+		DB    0x84, 0x84, 0x00, 0x00  ; 11:暗い黄色
+		DB    0x00, 0x00, 0x84, 0x00  ; 12:暗い青
+		DB    0x84, 0x00, 0x84, 0x00  ; 13:暗い紫
+		DB    0x00, 0x84, 0x84, 0x00  ; 14:暗い水色
+		DB    0x84, 0x84, 0x84, 0x00  ; 15:暗い灰色
 GDT0:
 		RESB	8				; ヌルセレクタ
 		DW		0xffff,0x0000,0x9200,0x00cf	; 読み書き可能セグメント32bit
