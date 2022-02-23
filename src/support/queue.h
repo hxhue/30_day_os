@@ -31,12 +31,12 @@ static inline void queue_init(queue_t *q, unsigned element_size,
   q->capacity = capacity;
   q->front = 0;
   q->end = 0;
-  q->queue = alloc_mem_4k(element_size * capacity);
+  q->queue = alloc_mem(element_size * capacity);
 }
 
 static inline void queue_destroy(queue_t *q) {
   q->front = q->end;
-  reclaim_mem_4k(q->queue, q->element_size * q->capacity);
+  reclaim_mem(q->queue, q->element_size * q->capacity);
   q->queue = 0;
 }
 
@@ -70,6 +70,21 @@ static inline int queue_push(queue_t *q, const void *in) {
   }
   xprintf("Warning: queue_push() on 0X%p failed because queue is full\n", q);
   return -1;
+}
+
+// Returns 0 on success, -1 on failure.
+static inline int queue_push_no_warning(queue_t *q, const void *in) {
+  u32 next = (q->end + 1) % q->capacity;
+  if (next != q->front) {
+    memcpy(q->queue + q->end * q->element_size, in, q->element_size);
+    q->end = next;
+    return 0;
+  }
+  return -1;
+}
+
+static inline void queue_clear(queue_t *q) {
+  q->front = q->end = 0;
 }
 
 #if (defined(__cplusplus))

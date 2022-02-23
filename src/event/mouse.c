@@ -58,7 +58,7 @@ static void inline handle_event_mouse_impl(mouse_msg_t msg) {
 
 static queue_t g_mouse_msg_queue;
 
-#define MOUSE_EVENT_QUEUE_SIZE 1024
+#define MOUSE_EVENT_QUEUE_SIZE 512
 
 void init_mouse_event_queue() {
   queue_init(&g_mouse_msg_queue, sizeof(mouse_msg_t), MOUSE_EVENT_QUEUE_SIZE);

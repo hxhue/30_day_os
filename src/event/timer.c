@@ -22,13 +22,14 @@ int timer_greater(void *a, void *b) {
   return ((timer_t *)a)->timeout > ((timer_t *)b)->timeout;
 }
 
-#define TIMER_QUEUE_SIZE 1024
+#define TIMER_QUEUE_SIZE 2048
 
 void init_timer_event_queue() {
   priority_queue_init(&g_timer_queue, sizeof(timer_t), TIMER_QUEUE_SIZE,
                       timer_swap, timer_greater);
 }
 
+// Requirements: callback != 0
 void add_timer(unsigned long long interval, void (*callback)(void)) {
   timer_t timer = {.timeout = interval + g_counter.count, .callback = callback};
   priority_queue_push(&g_timer_queue, &timer);
@@ -40,10 +41,12 @@ int timer_event_queue_empty() {
              g_counter.count;
 }
 
+// add_timer() cannot be called in a interrupt handler, so asm_sti() can be
+// called immediately.
 void timer_event_queue_consume() {
+  asm_sti();
   timer_t timer;
   priority_queue_pop(&g_timer_queue, &timer);
-  asm_sti();
   timer.callback();
 }
 

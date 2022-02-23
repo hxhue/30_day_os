@@ -31,13 +31,10 @@ typedef enum RGBColor {
 void init_display();
 
 struct layer_info_t;
-void fill_rect(struct layer_info_t *layer, Color color, int x0, int y0, int x1, int y1);
-void put_image(struct layer_info_t *layer, const u8 *rect, int width, int height, int x, int y);
-void put_char(struct layer_info_t *layer, Color color, int x0, int y0, char ch);
-/* Line-wrap is not implemented. */
-void put_string(struct layer_info_t *layer, Color color, int x0, int y0, const char *s);
-
-// void handle_event_redraw(unsigned data); // Data is not used
+void draw_rect(struct layer_info_t *layer, Color color, int x0, int y0, int x1, int y1);
+void draw_image(struct layer_info_t *layer, const u8 *rect, int width, int height, int x, int y);
+void draw_char(struct layer_info_t *layer, Color color, int x0, int y0, char ch);
+void draw_string(struct layer_info_t *layer, Color color, int x0, int y0, const char *s);
 
 typedef struct region_t {
   int x0, y0, x1, y1;

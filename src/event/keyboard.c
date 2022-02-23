@@ -4,7 +4,7 @@
 #include <support/asm.h>
 #include <support/queue.h>
 
-void handle_event_kbd_impl(unsigned keycode) {
+void handle_event_keyboard_impl(unsigned keycode) {
   // char buf[8];
   // sprintf(buf, "0X%02X", keycode);
   // fill_rect(RGB_AQUA_DARK, 0, 0, 320, 16);
@@ -13,7 +13,7 @@ void handle_event_kbd_impl(unsigned keycode) {
 
 static queue_t keyboard_msg_queue;
 
-#define KEYBOARD_MSG_QUEUE_SIZE 1024
+#define KEYBOARD_MSG_QUEUE_SIZE 512
 
 void init_keyboard_event_queue() {
   queue_init(&keyboard_msg_queue, sizeof(unsigned), KEYBOARD_MSG_QUEUE_SIZE);
@@ -31,7 +31,7 @@ static void keyboard_event_queue_consume() {
   unsigned keycode;
   queue_pop(&keyboard_msg_queue, &keycode);
   asm_sti();
-  handle_event_kbd_impl(keycode);
+  handle_event_keyboard_impl(keycode);
 }
 
 event_queue_t g_keyboard_event_queue = {

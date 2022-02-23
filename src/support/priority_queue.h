@@ -40,11 +40,11 @@ static inline void priority_queue_init(priority_queue_t *q,
   q->capacity = capacity;
   q->swap = swap;
   q->less = less;
-  q->heap = alloc_mem_4k(element_size * (capacity + 1));
+  q->heap = alloc_mem(element_size * (capacity + 1));
 }
 
 static inline void priority_queue_destory(priority_queue_t *q) {
-  reclaim_mem_4k(q->heap, q->element_size * (q->capacity + 1));
+  reclaim_mem(q->heap, q->element_size * (q->capacity + 1));
   q->heap = 0;
   q->size = 0;
 }

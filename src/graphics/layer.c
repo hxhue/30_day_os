@@ -29,17 +29,6 @@ struct layer_ctl_t {
 
 layer_ctl_t *g_lctl;
 
-void full_redraw() {
-  region_t region = {0, 0, g_boot_info.width, g_boot_info.height};
-  emit_redraw_event(region);
-}
-
-// Requirements: x0 <= x1, y0 <= y1.
-void partial_redraw(int x0, int y0, int x1, int y1) {
-  region_t region = {x0, y0, x1, y1};
-  emit_redraw_event(region);
-}
-
 static inline int layercmp(const layer_info_t *l, const layer_info_t *r) {
   return (l->rank != r->rank) ? (l->rank - r->rank) : l - r;
 };
@@ -140,8 +129,8 @@ void set_layer_rank(layer_info_t *layer, i16 rank) {
   layer->rank = clamp_i16(rank, 0, USER_RANK_MAX);
 
   adjust_layer_pos(index);
-  partial_redraw(layer->x, layer->y, layer->x + layer->width,
-                 layer->y + layer->height);
+  emit_redraw_event((region_t){layer->x, layer->y, layer->x + layer->width,
+                               layer->y + layer->height});
 }
 
 // Changes the position of the layer.
@@ -158,10 +147,10 @@ void move_layer_to(layer_info_t *layer, i32 x, i32 y) {
   int w = layer->width, h = layer->height;
   int screen_size = g_boot_info.width * g_boot_info.height;
   if (w * h * 3 < screen_size) {
-    partial_redraw(x0, y0, x0 + w, y0 + h);
-    partial_redraw(x,  y,  x + w,  y + h);
+    emit_redraw_event((region_t){x0, y0, x0 + w, y0 + h});
+    emit_redraw_event((region_t){x,  y,  x + w,  y + h});
   } else {
-    full_redraw();
+    emit_redraw_event((region_t){0, 0, g_boot_info.width, g_boot_info.height});
   }
 }
 
@@ -180,8 +169,8 @@ int delete_layer(layer_info_t *layer) {
   g_lctl->ntotal--;
   layer->inuse = 0;
   if (layer->rank > 0) {
-    partial_redraw(layer->x, layer->y, layer->x + layer->width,
-                   layer->y + layer->height);
+    emit_redraw_event((region_t){layer->x, layer->y, layer->x + layer->width,
+                                 layer->y + layer->height});
   }
   return 0;
 }

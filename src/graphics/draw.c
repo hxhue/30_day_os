@@ -28,32 +28,32 @@ void init_background() {
   layer_info_t *layer = new_layer(w, h, 0, 0, (u8 *)0);
   xassert(layer);
 
-  fill_rect(layer, RGB_AQUA_DARK, 0,      0,          w,  h - 28);
-  fill_rect(layer, RGB_GRAY,      0,      h - 28,     w,  h - 27);
-  fill_rect(layer, RGB_WHITE,     0,      h - 27,     w,  h - 26);
-  fill_rect(layer, RGB_GRAY,      0,      h - 26,     w,  h);
-  fill_rect(layer, RGB_WHITE,     3,      h - 24,    60,  h - 23);
-  fill_rect(layer, RGB_WHITE,     2,      h - 24,     3,  h - 3);
-  fill_rect(layer, RGB_GRAY_DARK, 3,      h - 4,     60,  h - 3);
-  fill_rect(layer, RGB_GRAY_DARK, 59,     h - 23,    60,  h - 4);
-  fill_rect(layer, RGB_BLACK,     2,      h - 3,     60,  h - 2);
-  fill_rect(layer, RGB_BLACK,     60,     h - 24,    61,  h - 2);
-  fill_rect(layer, RGB_GRAY_DARK, w - 47, h - 24, w - 3,  h - 23);
-  fill_rect(layer, RGB_GRAY_DARK, w - 47, h - 23, w - 46, h - 3);
-  fill_rect(layer, RGB_WHITE,     w - 47, h - 3,  w - 3,  h - 2);
-  fill_rect(layer, RGB_WHITE,     w - 3,  h - 24, w - 2,  h - 2);
+  draw_rect(layer, RGB_AQUA_DARK, 0,      0,          w,  h - 28);
+  draw_rect(layer, RGB_GRAY,      0,      h - 28,     w,  h - 27);
+  draw_rect(layer, RGB_WHITE,     0,      h - 27,     w,  h - 26);
+  draw_rect(layer, RGB_GRAY,      0,      h - 26,     w,  h);
+  draw_rect(layer, RGB_WHITE,     3,      h - 24,    60,  h - 23);
+  draw_rect(layer, RGB_WHITE,     2,      h - 24,     3,  h - 3);
+  draw_rect(layer, RGB_GRAY_DARK, 3,      h - 4,     60,  h - 3);
+  draw_rect(layer, RGB_GRAY_DARK, 59,     h - 23,    60,  h - 4);
+  draw_rect(layer, RGB_BLACK,     2,      h - 3,     60,  h - 2);
+  draw_rect(layer, RGB_BLACK,     60,     h - 24,    61,  h - 2);
+  draw_rect(layer, RGB_GRAY_DARK, w - 47, h - 24, w - 3,  h - 23);
+  draw_rect(layer, RGB_GRAY_DARK, w - 47, h - 23, w - 46, h - 3);
+  draw_rect(layer, RGB_WHITE,     w - 47, h - 3,  w - 3,  h - 2);
+  draw_rect(layer, RGB_WHITE,     w - 3,  h - 24, w - 2,  h - 2);
 
-  put_char(layer, RGB_WHITE, 0, 0, 'A');
-  put_string(layer, RGB_AQUA, 24, 0, "Day 6: Hello, world!");
+  draw_char(layer, RGB_WHITE, 0, 0, 'A');
+  draw_string(layer, RGB_AQUA, 24, 0, "Day 6: Hello, world!");
 
   u32 max_addr = get_max_mem_addr();
   u32 free_mem = get_avail_mem();
   char buf[64];
   sprintf(buf, "memory: %d MB, free: %d KB", max_addr / (1024 * 1024),
           free_mem / 1024);
-  put_string(layer, RGB_WHITE, 0, 80, buf);
+  draw_string(layer, RGB_WHITE, 0, 80, buf);
   sprintf(buf, "rand: %d", xrand());
-  put_string(layer, RGB_WHITE, 0, 96, buf);
+  draw_string(layer, RGB_WHITE, 0, 96, buf);
 
   set_layer_rank(layer, 1);
 
@@ -100,18 +100,18 @@ layer_info_t *make_window(int width, int height, const char *title) {
   if (!layer || !layer->buf)
     return (layer_info_t *)0; // Failure
   
-  fill_rect(layer, RGB_GRAY, 0, 0, width, 1);
-  fill_rect(layer, RGB_WHITE, 1, 1, width-1, 2);
-  fill_rect(layer, RGB_GRAY, 0, 0, 1, height);
-  fill_rect(layer, RGB_WHITE, 1, 1, 2, height-1);
-  fill_rect(layer, RGB_GRAY_DARK, width-2, 1, width-1, height-1);
-  fill_rect(layer, RGB_BLACK, width-1, 0, width, height);
-  fill_rect(layer, RGB_GRAY, 2, 2, width-2, height-2);
-  fill_rect(layer, RGB_CYAN_DARK, 3, 3, width-3, 21);
-  fill_rect(layer, RGB_GRAY_DARK, 1, height-2, width-1, height-1);
-  fill_rect(layer, RGB_BLACK, 0, height-1, width, height);
-  put_string(layer, RGB_WHITE, 24, 4, title);
-  put_image(layer, &close_btn_image[0][0], CLOSE_BTN_IMAGE_WIDTH,
+  draw_rect(layer, RGB_GRAY, 0, 0, width, 1);
+  draw_rect(layer, RGB_WHITE, 1, 1, width-1, 2);
+  draw_rect(layer, RGB_GRAY, 0, 0, 1, height);
+  draw_rect(layer, RGB_WHITE, 1, 1, 2, height-1);
+  draw_rect(layer, RGB_GRAY_DARK, width-2, 1, width-1, height-1);
+  draw_rect(layer, RGB_BLACK, width-1, 0, width, height);
+  draw_rect(layer, RGB_GRAY, 2, 2, width-2, height-2);
+  draw_rect(layer, RGB_CYAN_DARK, 3, 3, width-3, 21);
+  draw_rect(layer, RGB_GRAY_DARK, 1, height-2, width-1, height-1);
+  draw_rect(layer, RGB_BLACK, 0, height-1, width, height);
+  draw_string(layer, RGB_WHITE, 24, 4, title);
+  draw_image(layer, &close_btn_image[0][0], CLOSE_BTN_IMAGE_WIDTH,
             CLOSE_BTN_IMAGE_HEIGHT, width - 21, 5);
 
   return layer;
@@ -123,7 +123,7 @@ layer_info_t *make_window(int width, int height, const char *title) {
 // Requirements:
 // - layer and color are valid
 // - x0 >= 0, y0 >= 0 (For performance)
-void put_char(layer_info_t *layer, Color color, int x0, int y0, char ch) {
+void draw_char(layer_info_t *layer, Color color, int x0, int y0, char ch) {
   xassert(x0 >= 0 && y0 >= 0);
   extern char hankaku[4096];
   u8 *font16x8 = (u8 *)&hankaku[ch * HANKAKU_CHAR_HEIGHT];
@@ -153,10 +153,10 @@ void put_char(layer_info_t *layer, Color color, int x0, int y0, char ch) {
 // - layer and color are valid
 // - x0 >= 0, y0 >= 0 (For performance)
 // - s is not empty and accessible
-void put_string(layer_info_t *layer, Color color, int x0, int y0, const char *s) {
+void draw_string(layer_info_t *layer, Color color, int x0, int y0, const char *s) {
   xassert(x0 >= 0 && y0 >= 0);
   for (; *s; (void)++s, (void)(x0 += 8)) {
-    put_char(layer, color, x0, y0, *s);
+    draw_char(layer, color, x0, y0, *s);
   }
 }
 
@@ -260,7 +260,7 @@ void init_palette() {
 
 /* Fills the rectangle with specified color index. The rectange area is defined
    by (x0, y0) (Include) -> (x1, y1) (Exclude). */
-void fill_rect(layer_info_t *layer, Color color, int x0, int y0, int x1, int y1) {
+void draw_rect(layer_info_t *layer, Color color, int x0, int y0, int x1, int y1) {
   u8 *vram = layer->buf;
   x0 = max_i32(x0, 0);
   y0 = max_i32(y0, 0);
@@ -280,7 +280,7 @@ void fill_rect(layer_info_t *layer, Color color, int x0, int y0, int x1, int y1)
 // - layer is valid
 // - rect is accessible, and holds at least width * height bytes
 // - width >= 0, height >= 0
-void put_image(layer_info_t *layer, const u8 *rect, int width, int height, int x, int y) {
+void draw_image(layer_info_t *layer, const u8 *rect, int width, int height, int x, int y) {
   u8 *vram = layer->buf;
   int minj = max_i32(0, -y);
   int mini = max_i32(0, -x);
@@ -307,7 +307,7 @@ static inline void handle_event_redraw(const region_t *region) {
 layer_info_t *window_layer;
 
 void window_layer_timer_callback() {
-  fill_rect(window_layer, xrand() % RGB_TRANSPARENT, 1, 1, 32, 32);
+  draw_rect(window_layer, xrand() % RGB_TRANSPARENT, 1, 1, 32, 32);
   add_timer(50, window_layer_timer_callback);
 }
 
@@ -327,14 +327,19 @@ void init_display() {
 
 static queue_t redraw_msg_queue;
 
-#define REDRAW_MSG_QUEUE_SIZE 1024
+#define REDRAW_MSG_QUEUE_SIZE 6
 
 void init_redraw_event_queue() {
   queue_init(&redraw_msg_queue, sizeof(region_t), REDRAW_MSG_QUEUE_SIZE);
 }
 
 void emit_redraw_event(region_t region) {
-  queue_push(&redraw_msg_queue, &region);
+  if (queue_push_no_warning(&redraw_msg_queue, &region) < 0) {
+    // If queue is full, combine all messages to a single one.
+    queue_clear(&redraw_msg_queue);
+    region_t region = {0, 0, g_boot_info.width, g_boot_info.height};
+    queue_push(&redraw_msg_queue, &region);
+  }
 }
 
 int redraw_event_queue_is_empty() {
