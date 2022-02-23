@@ -11,49 +11,77 @@ SCRNX	    EQU  0x0ff4    ; 解像度のX
 SCRNY	    EQU  0x0ff6    ; 解像度のY
 VRAM	    EQU  0x0ff8    ; グラフィックバッファの開始番地
 
-VBE_INFO  EQU  0x1000    ; 256 bytes. See boot.h for more.
-VBE_MODE  EQU  0x4103
+VBE_MODE  EQU  0x0105    ; 1024 * 768 * 8 bit
 
 		ORG		0xc200        ; このプログラムがどこに読み込まれるのか
 
 ; 画面モードを設定
-
-		; MOV		AL,0x13			; VGAグラフィックス、320x200x8bitカラー
-		; MOV		AH,0x00
-		; INT		0x10
-		; MOV		BYTE [VMODE],8	; 画面モードをメモする（C言語が参照する）
-		; MOV		WORD [SCRNX],320
-		; MOV		WORD [SCRNY],200
-		; MOV		DWORD [VRAM],0x000a0000
-
-		MOV   AX,0
+; Try high resolution VBE first
+		; Get VBE version
+		MOV   AX,0x9000
 		MOV   ES,AX
-    ; Assume the mode exists
+		MOV   DI,0
+		MOV   AX,0x4f00
+		INT   0x10
+		CMP   AX,0x004f
+		JNE   scrn320         ; No VBE controller
+		MOV   AX,[ES:DI+4]    ; Get VBE version
+		CMP   AX,0x0200       ; Make sure version >= 2
+		JB    scrn320
 		; Get VBE information
+		; Information is stored at: 0x9000 * 16 + 0
 		MOV   AX,0x4f01
 		MOV   CX,VBE_MODE
-		MOV   DI,VBE_INFO
 		INT   0x10
+		CMP   AX,0x004f
+		JNE   scrn320         ; Failure
+		; Check VBE information
+		CMP   BYTE [ES:DI+0x19],8
+		JNE   scrn320
+		CMP   BYTE [ES:DI+0x1b],4
+		JNE   scrn320
+		MOV   AX,[ES:DI+0x00]
+		AND   AX,0x0080
+		JZ    scrn320
 		; Set VBE mode
-		MOV		BX,VBE_MODE		  ; VBEの640x480x8bitカラー
+		MOV		BX,VBE_MODE+0x4000 ; 0x4000: Use linear buffer
 		MOV		AX,0x4f02
 		INT		0x10
-		; Boot info is wrong. Maybe VESA version is different?
-		; We'll fix boot info later by checking VBE_INFO.
+		; Save information
+		MOV		BYTE [VMODE],8
+		MOV   AX,[ES:DI+18]
+		MOV		[SCRNX],AX
+		MOV   AX,[ES:DI+20]
+		MOV		[SCRNY],AX
+		; Don't know why I cannot use EAX to copy 4 bytes directly.
+		; Just use copy twice to overcome the problem.
+		MOV   AX,[ES:DI+40]
+		MOV		[VRAM],AX
+		MOV   AX,[ES:DI+42]
+		MOV		[VRAM+2],AX
+		
+		; ; Set palette. (Useless. Don't know why.)
+		; MOV   DI,VBE_COLOR_TABLE ; table address
+		; MOV   AX,0x4f09          ; function number
+		; MOV   BL,0x00            ; select "set"
+		; MOV   CX,16              ; number of registers to update
+		; MOV   DX,0               ; first register to update
+
+		; VBE setting succeeded
+		JMP keystatus
+
+; Fall back to 320x200 VGA
+scrn320:
+		MOV		AL,0x13			; VGAグラフィックス、320x200x8bitカラー
+		MOV		AH,0x00
+		INT		0x10
 		MOV		BYTE [VMODE],8	; 画面モードをメモする（C言語が参照する）
-		MOV		WORD [SCRNX],800
-		MOV		WORD [SCRNY],600
-		MOV		DWORD [VRAM],0xe000000
-		; Assume the setting succeeded and ignore the return status
-		; Set palette. (Useless. Don't know why.)
-		MOV   DI,VBE_COLOR_TABLE ; table address
-		MOV   AX,0x4f09          ; function number
-		MOV   BL,0x00            ; select "set"
-		MOV   CX,16              ; number of registers to update
-		MOV   DX,0               ; first register to update
+		MOV		WORD [SCRNX],320
+		MOV		WORD [SCRNY],200
+		MOV		DWORD [VRAM],0x000a0000
 
 ; キーボードのLED状態をBIOSに教えてもらう
-
+keystatus:
 		MOV		AH,0x02
 		INT		0x16 			; keyboard BIOS
 		MOV		[LEDS],AL
@@ -85,6 +113,7 @@ VBE_MODE  EQU  0x4103
 ; プロテクトモード移行
 ; Real mode: addr = seg_reg * 16 + offset
 ; Protected mode: addr = (GDT_start + seg_reg).base + offset
+
 [INSTRSET "i486p"]		    ; 486の命令まで使いたいという記述
 
 		LGDT	[GDTR0]			    ; 暫定GDTを設定

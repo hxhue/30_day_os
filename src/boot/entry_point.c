@@ -9,11 +9,12 @@
 
 boot_info_t g_boot_info;
 
-void fix_vbe_info();
+void check_boot_info();
 
 void OS_startup(void) {
   g_boot_info = *(boot_info_t *)0x0ff0;
-  fix_vbe_info();
+
+  check_boot_info();
 
   init_gdt();
 
@@ -49,14 +50,15 @@ void OS_startup(void) {
 //   *(int *)b = t;
 // }
 
-void fix_vbe_info() {
-  vbe_mode_info_t *vbe_info = (vbe_mode_info_t *)0x1000;
-  xprintf("VBE info:\n");
+void check_boot_info() {
+  xprintf("g_boot_info:\n");
+  xprintf("\twidth: %d, height: %d\n", g_boot_info.width, g_boot_info.height);
+  xprintf("\tstart of vram: 0X%08X\n", g_boot_info.vram_addr);
+
+  // vbe_mode_info is only temporarily valid and not saved for further usages.
+  vbe_mode_info_t *vbe_info = (vbe_mode_info_t *)(0x9000 * 16 + 0);
+  xprintf("VBE info from BIOS initialization:\n");
   xprintf("\twidth: %d, height: %d\n", vbe_info->width, vbe_info->height);
   xprintf("\tstart of vram: 0X%08X\n", vbe_info->framebuffer);
   xprintf("\tbits per pixel: %d\n", vbe_info->bpp);
-  g_boot_info.vram_addr = vbe_info->framebuffer;
-  g_boot_info.width = vbe_info->width;
-  g_boot_info.height = vbe_info->height;
-  *(boot_info_t *)0x0ff0 = g_boot_info;
 }

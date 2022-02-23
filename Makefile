@@ -83,10 +83,12 @@ $(C_OBJS) : $(BUILD)/%.obj : src/%.c
 $(NAS_OBJS) : $(BUILD)/%.obj : src/%.nas
 	$(MKDIR) -p $(dir $@)
 	$(NASK) $< $@ $(patsubst %.obj,%.lst,$@)
+#	nasm -f coff -o $@ $<
 
 $(BUILD)/%.bin : src/%.nas
 	$(MKDIR) -p $(dir $@)
 	$(NASK) $< $@ $(patsubst %.bin,%.lst,$@)
+#	nasm -f coff -o $@ $<
 
 # Combine all objects in floopy storage (from address 0x4200 of the floopy)
 # 3MB + 64KB = 3136KB

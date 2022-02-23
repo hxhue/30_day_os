@@ -2,7 +2,6 @@
 [FORMAT "WCOFF"]                
 [INSTRSET "i486p"]              
 [BITS 32]                       
-[FILE "inst.nas"]           ; Name of this file
 
     GLOBAL _asm_hlt,  _asm_cli,   _asm_sti, _asm_sti_hlt
     GLOBAL _asm_in8,  _asm_in16,  _asm_in32
