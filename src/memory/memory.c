@@ -88,7 +88,7 @@ u32 get_max_mem_addr() {
   return mem;
 }
 
-void *alloc_mem(u32 size) {
+void *alloc_mem(unsigned long size) {
   unsigned int i;
   void *a;
   memory_pool_t *mem = g_mem_set;
@@ -109,7 +109,7 @@ void *alloc_mem(u32 size) {
   return (void *)0;
 }
 
-int reclaim_mem(void *addr, unsigned int size) {
+int reclaim_mem(void *addr, unsigned long size) {
   if (addr == 0) {
     return 0;
   }
@@ -176,12 +176,16 @@ void init_mem_mgr() {
   reclaim_mem((void *)0x00400000, max_addr - 0x00400000);
 }
 
-void *alloc_mem_4k(u32 size) {
+void *alloc_mem_4k(unsigned long size) {
   size = (size + 0xfff) & 0xfffff000;
   return alloc_mem(size);
 }
 
-int reclaim_mem_4k(void *addr, u32 size) {
+int reclaim_mem_4k(void *addr, unsigned long size) {
   size = (size + 0xfff) & 0xfffff000;
   return reclaim_mem(addr, size);
+}
+
+void reclaim_mem_no_return_value(void *addr, unsigned long size) {
+  (void)reclaim_mem(addr, size);
 }

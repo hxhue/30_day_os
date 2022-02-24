@@ -14,6 +14,10 @@ typedef struct queue_t {
   int tag;
   u8 *queue;
   u32 front, end, capacity, element_size;
+  void *(*alloc)(unsigned long);
+  // free(addr, size)
+  // If size is not used in free(), a wrapper is needed.
+  void (*free)(void *, unsigned long);
 } queue_t;
 
 static inline unsigned int queue_size(const queue_t *q) {
@@ -25,18 +29,22 @@ static inline int queue_is_empty(const queue_t *q) {
 }
 
 static inline void queue_init(queue_t *q, unsigned element_size,
-                              unsigned capacity) {
+                              unsigned capacity, void *(*alloc)(unsigned long),
+                              void (*free)(void *, unsigned long)) {
+  xassert(q && alloc && free);
   q->tag = QUEUE_STRUCT_TAG;
   q->element_size = element_size;
   q->capacity = capacity;
   q->front = 0;
   q->end = 0;
-  q->queue = alloc_mem(element_size * capacity);
+  q->alloc = alloc;
+  q->free = free;
+  q->queue = q->alloc(element_size * capacity);
 }
 
 static inline void queue_destroy(queue_t *q) {
   q->front = q->end;
-  reclaim_mem(q->queue, q->element_size * q->capacity);
+  q->free(q->queue, q->element_size * q->capacity);
   q->queue = 0;
 }
 

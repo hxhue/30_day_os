@@ -334,7 +334,8 @@ static queue_t redraw_msg_queue;
 // Size of redraw_msg_queue is small, since it is designed to overflow easily so
 // we can know when we should combine redrawing events.
 void init_redraw_event_queue() {
-  queue_init(&redraw_msg_queue, sizeof(region_t), REDRAW_MSG_QUEUE_SIZE);
+  queue_init(&redraw_msg_queue, sizeof(region_t), REDRAW_MSG_QUEUE_SIZE,
+             alloc_mem, reclaim_mem_no_return_value);
 }
 
 void emit_redraw_event(int x0, int y0, int x1, int y1) {

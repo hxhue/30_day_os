@@ -51,7 +51,7 @@ void OS_startup(void) {
 // }
 
 void check_boot_info() {
-  xprintf("\ng_boot_info:\n");
+  xprintf("g_boot_info:\n");
   xprintf("\twidth: %d, height: %d\n", g_boot_info.width, g_boot_info.height);
   xprintf("\tstart of vram: 0X%08X\n", g_boot_info.vram_addr);
 

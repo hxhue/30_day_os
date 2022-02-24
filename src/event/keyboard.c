@@ -1,3 +1,4 @@
+#include "memory/memory.h"
 #include <graphics/draw.h>
 #include <event/keyboard.h>
 #include <stdio.h>
@@ -33,7 +34,8 @@ static queue_t keyboard_msg_queue;
 #define KEYBOARD_MSG_QUEUE_SIZE 512
 
 void init_keyboard_event_queue() {
-  queue_init(&keyboard_msg_queue, sizeof(unsigned), KEYBOARD_MSG_QUEUE_SIZE);
+  queue_init(&keyboard_msg_queue, sizeof(unsigned), KEYBOARD_MSG_QUEUE_SIZE,
+             alloc_mem, reclaim_mem_no_return_value);
 }
 
 void emit_keyboard_event(unsigned data) {

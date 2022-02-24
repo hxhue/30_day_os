@@ -18,6 +18,10 @@ typedef struct priority_queue_t {
   u32 element_size, size, capacity;
   void (*swap)(void *, void *);
   int (*less)(void *, void *);
+  void *(*alloc)(unsigned long);
+  // free(addr, size)
+  // If size is not used in free(), a wrapper is needed.
+  void (*free)(void *, unsigned long);
 } priority_queue_t;
 
 static inline u32 priority_queue_size(priority_queue_t *q) {
@@ -28,23 +32,28 @@ static inline u32 priority_queue_is_empty(priority_queue_t *q) {
   return q->size == 0;
 }
 
-// Requirements: swap != 0, cmp != 0, q != 0
+// Requirements: swap != 0, cmp != 0, q != 0, alloc != 0, free != 0
 static inline void priority_queue_init(priority_queue_t *q,
                                        unsigned element_size,
                                        unsigned capacity,
                                        void (*swap)(void *, void *),
-                                       int (*less)(void *, void *)) {
+                                       int (*less)(void *, void *),
+                                       void *(*alloc)(unsigned long),
+                                       void (*free)(void *, unsigned long)) {
+  xassert(q && swap && less && alloc && free);
   q->tag = PRIORITY_QUEUE_STRUCT_TAG;
   q->element_size = element_size;
   q->size = 0;
   q->capacity = capacity;
   q->swap = swap;
   q->less = less;
-  q->heap = alloc_mem(element_size * (capacity + 1));
+  q->alloc = alloc;
+  q->free = free;
+  q->heap = (u8 *)alloc(element_size * (capacity + 1));
 }
 
 static inline void priority_queue_destory(priority_queue_t *q) {
-  reclaim_mem(q->heap, q->element_size * (q->capacity + 1));
+  q->free(q->heap, q->element_size * (q->capacity + 1));
   q->heap = 0;
   q->size = 0;
 }
