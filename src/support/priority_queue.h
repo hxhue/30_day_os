@@ -72,7 +72,7 @@ static inline void priority_queue_sink(priority_queue_t *q, u32 i) {
     }
     if (q->less(heap + i * size, heap + next * size)) {
       q->swap(heap + i * size, heap + next * size);
-      i *= 2;
+      i = next;
     } else {
       break;
     }
