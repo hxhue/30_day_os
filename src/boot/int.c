@@ -76,6 +76,8 @@ void int_handler0x2c(u32 esp) {
   static int mouse_state = 3;
   static mouse_msg_t msg = {{0}};
 
+  // xprintf("Received IRQ-12: case %d, data %d\n", mouse_state, data);
+
   switch(mouse_state) {
     case 0:
       // Move bits:  0x0~0x3

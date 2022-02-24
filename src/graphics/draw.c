@@ -321,7 +321,7 @@ void init_display() {
   init_cursor();     // Cursor layer
 
   window_layer = make_window(160, 68, "Counter");
-  layer_move_to(window_layer, 80, 72);
+  layer_move_to(window_layer, 160, 100);
   layer_set_rank(window_layer, 2);
 
   add_timer(50, window_layer_timer_callback);

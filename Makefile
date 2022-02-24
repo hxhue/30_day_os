@@ -36,9 +36,10 @@ C_FLAGS   = -m32 -Isrc -Isrc/libc -nostdinc -std=c11 -Os -Wall
 CXX_FLAGS = -m32 -Isrc -std=c++17 -Os -Wall
 
 QEMU_IMG  := $(BUILD)/os.img
-# QEMU_RUN  := $(BIN)/qemu/qemu.exe -L . -m 32 -localtime -std-vga -fda $(QEMU_IMG)
+# "whpx" must be used together with ",kernel-irqchip=off"
 QEMU_RUN  := qemu-system-x86_64 -m 32 -rtc base=localtime -vga std \
-	-drive "file=$(QEMU_IMG),format=raw,if=floppy" -serial stdio --no-reboot -accel hax
+	-drive "file=$(QEMU_IMG),format=raw,if=floppy" -serial stdio --no-reboot \
+	-accel whpx,kernel-irqchip=off
 
 # Get all C files in src/*/*
 C_SOURCES  := $(shell $(FIND) src/ -mindepth 2 -name "*.c")
