@@ -1,0 +1,451 @@
+#include "tree.h"
+#include <string.h>
+
+// TODO: Upper bound/lower bound support
+
+#ifdef __GNUC__
+
+struct tree_node_t {
+  int red; // 1 for red, 0 for black
+  struct tree_node_t *left, *right, *parent;
+} __attribute__((__packed__));
+
+#endif
+
+#ifdef _MSC_VER
+
+__pragma(pack(push, 1)) struct tree_node_t {
+  int red; // 1 for red, 0 for black
+  struct tree_node_t *left, *right, *parent;
+} __pragma(pack(pop));
+
+#endif
+
+typedef struct tree_node_t tree_node_t;
+
+/*
+Element memory layout:
+- sizeof(tree_node_t)
+  - tree_node_t data
+  - padding
+- payload size
+
+Graph conventions:
+  Left child:        / //
+  Right child:       \ \\
+  Unknown direction: | ||
+  Red:               \\ // ||
+  Black:             |  \   /
+  Unknown color:     |? \? /?
+  Not null:         variable_name!
+  Nullable:         variable_name
+*/
+
+static inline void *tree_node_get_key(tree_node_t *node) {
+  return (char *) node + sizeof(tree_node_t);
+}
+
+static inline tree_node_t *tree_node_from_key(void *key) {
+  return (tree_node_t *)((char *)key - sizeof(tree_node_t));
+}
+
+static inline size_t tree_get_node_size_inline(size_t element_size) {
+  return ((sizeof(tree_node_t) + element_size) + 7) / 8 * 8;
+}
+
+size_t tree_get_node_size(size_t element_size) {
+  return tree_get_node_size_inline(element_size);
+}
+
+// Create a single tree node.
+static inline tree_node_t *tree_node_new(tree_t *tree, void *key,
+                                         tree_node_t *parent) {
+  tree_node_t *node =
+      (tree_node_t *)tree->alloc(tree_get_node_size_inline(tree->element_size));
+  node->left = node->right = tree->nil;
+  node->red = 1;
+  node->parent = parent;
+  memcpy(tree_node_get_key(node), key, tree->element_size);
+  return node;
+}
+
+// Rotate the tree and fix link from upstream. Color needs to be fixed by other
+// procedures. This function assumes x->right != tree->nil and tree->root->parent
+// == tree->nil.
+static void tree_node_rotate_left(tree_t *tree, tree_node_t *x) {
+  tree_node_t *y = x->right, *nil = tree->nil;
+  x->right = y->left;
+  if (y->left != nil) {
+    y->left->parent = x;
+  }
+  y->parent = x->parent;
+  if (x->parent == nil)          tree->root = y;
+  else if (x == x->parent->left) x->parent->left = y;
+  else                           x->parent->right = y;
+  y->left = x;
+  x->parent = y;
+}
+
+// Rotate the tree and fix link from upstream. Color needs to be fixed by other
+// procedures. This function assumes x->left != tree->nil and tree->root->parent
+// == tree->nil.
+static void tree_node_rotate_right(tree_t *tree, tree_node_t *x) {
+  tree_node_t *y = x->left, *nil = tree->nil;
+  x->left = y->right;
+  if (y->right != nil) {
+    y->right->parent = x;
+  }
+  y->parent = x->parent;
+  if (x->parent == nil)          tree->root = y;
+  else if (x == x->parent->left) x->parent->left = y;
+  else                           x->parent->right = y;
+  y->right = x;
+  x->parent = y;
+}
+
+static void tree_node_insert_balance(tree_t *tree, tree_node_t *x) {
+  // 1. x is always red.
+  // 2. There is no invalid node except the newly inserted one.
+  while (x != tree->root && x->parent->red) {
+    tree_node_t *pp = x->parent->parent;
+    if (x->parent == pp->left) {
+      //            |
+      //            pp!
+      //          //   \?
+      //       parent!  y
+      //         ||
+      //         x!
+      tree_node_t *y = pp->right;
+      if (y->red) {
+        //            |
+        //            pp!
+        //          //  \\
+        //       parent!  y!
+        //         ||
+        //         x!
+        x->parent->red = 0;
+        y->red = 0;
+        pp->red = 1;
+        x = pp;
+      } else {
+        if (x == x->parent->right) {
+          x = x->parent;
+          tree_node_rotate_left(tree, x);
+        }
+        //            |
+        //            pp!
+        //          //  \
+        //       parent!  y
+        //        //
+        //       x!
+        x->parent->red = 0;
+        pp->red = 1;
+        tree_node_rotate_right(tree, pp);
+      }
+    } else {
+      //            |
+      //            pp!
+      //          /?  \\
+      //         y   parent!
+      //               ||
+      //               x!
+      tree_node_t *y = pp->left;
+      if (y->red) {
+        x->parent->red = 0;
+        y->red = 0;
+        pp->red = 1;
+        x = pp;
+      } else {
+        if (x == x->parent->left) {
+          x = x->parent;
+          tree_node_rotate_right(tree, x);
+        }
+        x->parent->red = 0;
+        pp->red = 1;
+        tree_node_rotate_left(tree, pp);
+      }
+    }
+  }
+}
+
+// Returns if insertion happened.
+// Requirements: tree != 0, key != 0.
+static int tree_node_insert(tree_t *tree, void *key) {
+  int (*cmp)(void *, void *) = tree->cmp;
+  tree_node_t *nil = tree->nil;
+  tree_node_t *parent = nil, *cur = tree->root;
+
+  int result = 0;
+  while (cur != nil) {
+    result = cmp(key, tree_node_get_key(cur));
+    if (result < 0)      parent = cur, cur = cur->left;
+    else if (result > 0) parent = cur, cur = cur->right;
+    else                 return 0;// No insertion
+  }
+
+  cur = tree_node_new(tree, key, parent);
+
+  if (result < 0)        parent->left = cur;
+  else if (result > 0)   parent->right = cur;
+  else                   tree->root = cur;
+
+  tree_node_insert_balance(tree, cur);
+
+  tree->count++;
+  return 1;
+}
+
+static void *tree_node_find(const tree_t *tree, tree_node_t *node,
+                            void *key) {
+  int (*cmp)(void *, void *) = tree->cmp;
+  tree_node_t *nil = tree->nil;
+
+  while (node != nil) {
+    int result = cmp(key, tree_node_get_key(node));
+    if (result < 0)      node = node->left;
+    else if (result > 0) node = node->right;
+    else                 return tree_node_get_key(node);
+  }
+
+  return 0;
+}
+
+void tree_insert(tree_t *tree, void *key) {
+  tree_node_insert(tree, key);
+  tree->root->red = 0;
+  tree->root->parent = tree->nil;
+}
+
+size_t tree_size(const tree_t *tree) {
+   return tree->count;
+}
+
+int tree_empty(const tree_t *tree) {
+  return !tree || tree->root == tree->nil;
+}
+
+void *tree_find(const tree_t *tree, void *key) {
+  return tree_node_find(tree, tree->root, key);
+}
+
+// Requirement(s): tree != 0, cur != nil
+static inline tree_node_t *tree_node_leftmost(const tree_t *tree,
+                                              tree_node_t *cur) {
+  tree_node_t *nil = tree->nil;
+  assert(cur != nil);
+  while (cur->left != nil) {
+    cur = cur->left;
+  }
+  return cur;
+}
+
+// Requirement(s): tree != 0, cur != nil
+static inline tree_node_t *tree_node_rightmost(const tree_t *tree,
+                                               tree_node_t *cur) {
+  tree_node_t *nil = tree->nil;
+  while (cur->right != nil) {
+    cur = cur->right;
+  }
+  return cur;
+}
+
+// Returns the address of the first key.
+// Requirement(s): The key should not be written!
+void *tree_smallest_key(const tree_t *tree) {
+  if (!tree || tree->root == tree->nil) {
+    return (void *) 0;
+  }
+  tree_node_t *h = tree_node_leftmost(tree, tree->root);
+  return tree_node_get_key(h);
+}
+
+// Returns the address of the last key, not the off-the-end key!
+// Requirement(s): The key should not be written!
+void *tree_largest_key(const tree_t *tree) {
+  if (!tree || tree->root == tree->nil) {
+    return (void *) 0;
+  }
+  tree_node_t *h = tree_node_rightmost(tree, tree->root);
+  return tree_node_get_key(h);
+}
+
+// Requirement(s): "key" should be a node in "tree".
+void *tree_next_key(const tree_t *tree, void *key) {
+  tree_node_t *node = tree_node_from_key(key);
+  tree_node_t *nil = tree->nil;
+  if (node->right != nil)
+    return tree_node_get_key(tree_node_leftmost(tree, node->right));
+  while (node->parent != nil) {
+    if (node == node->parent->left) {
+      return tree_node_get_key(node->parent);
+    }
+    node = node->parent;
+  }
+  return (void *) 0;
+}
+
+// Requirement(s): "key" should be a node in "tree".
+void *tree_last_key(const tree_t *tree, void *key) {
+  tree_node_t *node = tree_node_from_key(key);
+  tree_node_t *nil = tree->nil;
+  if (node->left != nil)
+    return tree_node_get_key(tree_node_rightmost(tree, node->left));
+  while (node->parent != nil) {
+    if (node == node->parent->right) {
+      return tree_node_get_key(node->parent);
+    }
+    node = node->parent;
+  }
+
+  return (void *) 0;
+}
+
+void tree_init(tree_t *tree, size_t element_size, void *(*alloc)(size_t),
+               void (*free)(void *), int (*cmp)(void *, void *)) {
+  tree->alloc = alloc;
+  tree->free = free;
+  tree->cmp = cmp;
+  tree->element_size = element_size;
+  tree->count = 0;
+  tree->nil = (tree_node_t *)alloc(sizeof(tree_node_t) + element_size);
+  tree->nil->red = 0;
+  tree->root = tree->nil;
+}
+
+void tree_node_remove_balance(tree_t *tree, tree_node_t *x) {
+
+  // maintain red-black tree balance after deleting node x
+
+  while (x != tree->root && !x->red) {
+    if (x == x->parent->left) {
+      tree_node_t *w = x->parent->right;
+      if (w->red) {
+        w->red = 0;
+        x->parent->red = 1;
+        tree_node_rotate_left(tree, x->parent);
+        w = x->parent->right;
+      }
+      if (!w->left->red && !w->right->red) {
+        w->red = 1;
+        x = x->parent;
+      } else {
+        if (!w->right->red) {
+          w->left->red = 0;
+          w->red = 1;
+          tree_node_rotate_right(tree, w);
+          w = x->parent->right;
+        }
+        w->red = x->parent->red;
+        x->parent->red = 0;
+        w->right->red = 0;
+        tree_node_rotate_left(tree, x->parent);
+        x = tree->root;
+      }
+    } else {
+      tree_node_t *w = x->parent->left;
+      if (w->red) {
+        w->red = 0;
+        x->parent->red = 1;
+        tree_node_rotate_right(tree, x->parent);
+        w = x->parent->left;
+      }
+      if (!w->right->red && !w->left->red) {
+        w->red = 1;
+        x = x->parent;
+      } else {
+        if (!w->left->red) {
+          w->right->red = 0;
+          w->red = 1;
+          tree_node_rotate_left(tree, w);
+          w = x->parent->left;
+        }
+        w->red = x->parent->red;
+        x->parent->red = 0;
+        w->left->red = 0;
+        tree_node_rotate_right(tree, x->parent);
+        x = tree->root;
+      }
+    }
+  }
+  x->red = 0;
+}
+
+// Let y replace x. x is then detached from the tree. x must exist, but y can be
+// nil.
+static void tree_node_replace(tree_t *rbt, tree_node_t *x, tree_node_t *y) {
+  if (x->parent == rbt->nil) {
+    rbt->root = y;
+  } else {
+    if (x == x->parent->left) x->parent->left = y;
+    else                      x->parent->right = y;
+  }
+  y->parent = x->parent;
+}
+
+// z must be a node existing in tree.
+static void tree_node_remove_impl(tree_t *rbt, tree_node_t *z) {
+  tree_node_t *nil = rbt->nil;
+  tree_node_t *x, *y;
+  y = z;
+  int y_was_red = y->red;
+
+  if (z->left == nil) {
+    x = z->right;
+    tree_node_replace(rbt, z, z->right);
+  } else if (z->right == nil) {
+    x = z->left;
+    tree_node_replace(rbt, z, z->left);
+  } else {
+    // find tree successor with a null node as a child
+    y = tree_node_leftmost(rbt, z->right);
+    y_was_red = y->red;
+    x = y->right;
+    if (y->parent == z) x->parent = y;
+    else {
+      tree_node_replace(rbt, y, y->right);
+      y->right = z->right;
+      y->right->parent = y;
+    }
+    tree_node_replace(rbt, z, y);
+    y->left = z->left;
+    y->left->parent = y;
+    y->red = z->red;
+  }
+
+  if (!y_was_red) {
+    tree_node_remove_balance(rbt, x);
+  }
+
+  rbt->free(z);
+}
+
+void tree_node_remove(tree_t *tree, tree_node_t *node, void *key) {
+  key = tree_node_find(tree, node, key);
+  if (key) {
+    tree_node_remove_impl(tree, tree_node_from_key(key));
+    tree->count--;
+  }
+}
+
+static void tree_node_destroy(tree_t *tree, tree_node_t *node) {
+  if (node != tree->nil) {
+    tree_node_destroy(tree, node->left);
+    tree_node_t *right = node->right;
+    tree->free(node);
+    tree_node_destroy(tree, right);
+  }
+}
+
+void tree_destroy(tree_t *tree) {
+  if (tree) {
+    tree_node_destroy(tree, tree->root);
+    tree->free(tree->nil);
+    tree->root = tree->nil = (tree_node_t *)0;
+  }
+}
+
+void tree_remove(tree_t *tree, void *key) {
+  if (key) {
+    tree_node_remove(tree, tree->root, key);
+  }
+}
