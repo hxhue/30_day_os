@@ -17,10 +17,13 @@ void debug_xassert_failure_impl(const char *assertion, const char *file, int lin
 int  debug_write_console(const char *s);
 
 #ifdef NDEBUG
+
 #define xassert(condition)   ((void)0)
 #define xprintf(format, ...) ((void)0)
 #define xputs(str)           ((void)0)
+
 #else
+
 #define TO_STRING(s) TO_STRING_IMPL(s)
 #define TO_STRING_IMPL(s) #s
 #define xassert(condition)                                                     \
@@ -28,7 +31,6 @@ int  debug_write_console(const char *s);
     if (!(condition))                                                          \
       debug_xassert_failure_impl(TO_STRING(condition), __FILE__, __LINE__);    \
   } while (0)
-#endif
 static inline int xputs(const char *str) {
   int n = debug_write_console(str);
   asm_out8(0x3F8, '\n');
@@ -40,6 +42,8 @@ static inline int xputs(const char *str) {
     sprintf(xprintf_buf, fmt, ##__VA_ARGS__);                                  \
     debug_write_console(xprintf_buf);                                          \
   } while (0)
+  
+#endif
 #if (defined(__cplusplus))
         }
 #endif
