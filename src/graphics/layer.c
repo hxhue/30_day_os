@@ -49,7 +49,6 @@ static int layer_pointer_cmp(void *lhs, void *rhs) {
 
 static void *alloc_tree_node(size_t size) {
   xassert(size == tree_get_node_size(sizeof(void *)));
-  xprintf("[alloc_tree_node]\n");
   // May be null.
   void *node = node_alloc_get(&layerctl.tree_node_alloc);
   return node;

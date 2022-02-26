@@ -7,6 +7,7 @@
 #include <stddef.h>
 #include <string.h>
 #include "node_allocator.h"
+#include "support/debug.h"
 #include <support/debug.h>
 
 void node_alloc_init(node_allocator_t *alloc, void *memory, size_t memory_size,
@@ -23,15 +24,11 @@ void *node_alloc_get(node_allocator_t *alloc) {
   int found = 0;
   size_t bit, i;
   
-  xprintf("node_alloc_get(): fast_count=%d, bmsz=%d\n", (int)alloc->fast_count, (int)alloc->bmsz);
-  
   if (alloc->fast_count < alloc->bmsz * 8) {
     bit = alloc->fast_count++;
     alloc->mem[bit / 8] &= ~(0x80U >> (bit % 8));
     found = 1;
   }
-
-  // TODO: there is a bug that when fast_count is not used, the same memory will be allocated twice!
 
   for (i = 0; !found && i < alloc->bmsz; ++i) {
     if (alloc->mem[i]) {
@@ -40,16 +37,21 @@ void *node_alloc_get(node_allocator_t *alloc) {
       alloc->mem[i] &= (~x);
       // For a byte, MSB is bit 0, while LSB is bit 7
       bit = 0; 
-      if (byte & 0x0f) bit += 4;
-      if (byte & 0x33) bit += 2;
-      if (byte & 0x55) bit += 1;
+      if (x & 0x0f) bit += 4;
+      if (x & 0x33) bit += 2;
+      if (x & 0x55) bit += 1;
       bit += i * 8;
       found = 1;
+
+      // xprintf("node_alloc_get(): fast_count=%d, bmsz=%d, ", (int)alloc->fast_count, (int)alloc->bmsz);
+      // xprintf("byte is 0x%x, ", byte);
+      // xprintf("x is 0x%x, ", x);
+      // xprintf("bit is %d\n", bit);
+
       break;
     }
   }
   if (found) {
-    xprintf("node_alloc_get(): bit: %d\n", (int)bit);
     return alloc->mem + alloc->bmsz + bit * alloc->element_size;
   }
   return (void *)0; // Out of memory
