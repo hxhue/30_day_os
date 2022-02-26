@@ -7,14 +7,13 @@
 
 #include <support/type.h>
 
-#define MAX_LAYER_NUM    580
 #define REDRAW_XY_FACTOR 8
 
 typedef struct layer_info_t layer_info_t;
-typedef struct layer_ctl_t layer_ctl_t;
 
 struct layer_info_t {
-  u8 inuse;
+  // u8 inuse;
+  i16 id;
   u16 width, height; // Size
   u16 x, y;          // Position (top left)
   i16 rank;          // "rank" == 0 means invisible,
@@ -22,7 +21,7 @@ struct layer_info_t {
   u8 *buf;
 };
 
-extern layer_ctl_t *g_lctl;
+// extern layer_ctl_t *g_lctl;
 
 void init_layer_mgr();
 

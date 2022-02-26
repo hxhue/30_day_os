@@ -51,9 +51,9 @@ void OS_startup(void) {
 // }
 
 void check_boot_info() {
-  xprintf("g_boot_info:\n");
+  xprintf("g_boot_info: {\n");
   xprintf("\twidth: %d, height: %d\n", g_boot_info.width, g_boot_info.height);
-  xprintf("\tstart of vram: 0X%08X\n", g_boot_info.vram_addr);
+  xprintf("\tstart of vram: 0X%08X\n}\n", g_boot_info.vram_addr);
 
   // vbe_mode_info is only temporarily valid and not saved for further usages.
   // vbe_mode_info_t *vbe_info = (vbe_mode_info_t *)(0x9000 * 16 + 0);

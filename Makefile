@@ -37,7 +37,7 @@ CXX_FLAGS = -m32 -Isrc -std=c++17 -Os -Wall
 
 QEMU_IMG  := $(BUILD)/os.img
 # "whpx" must be used together with ",kernel-irqchip=off"
-QEMU_RUN  := qemu-system-x86_64 -m 32 -rtc base=localtime -vga std \
+QEMU_RUN  := qemu-system-x86_64 -m 64 -rtc base=localtime -vga std \
 	-drive "file=$(QEMU_IMG),format=raw,if=floppy" -serial stdio --no-reboot \
 	-accel whpx,kernel-irqchip=off
 

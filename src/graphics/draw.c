@@ -255,7 +255,6 @@ void init_palette() {
       0x00, 0x84, 0x84, /* 14:暗い水色 */
       0x84, 0x84, 0x84  /* 15:暗い灰色 */
   };
-  // TODO: Using VBE now
   set_palette(0, 15, table_rgb);
 }
 

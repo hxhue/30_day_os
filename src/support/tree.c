@@ -1,7 +1,6 @@
 #include "tree.h"
+#include "debug.h"
 #include <string.h>
-
-// TODO: Upper bound/lower bound support
 
 #ifdef __GNUC__
 
@@ -23,23 +22,11 @@ __pragma(pack(push, 1)) struct tree_node_t {
 
 typedef struct tree_node_t tree_node_t;
 
-/*
-Element memory layout:
-- sizeof(tree_node_t)
-  - tree_node_t data
-  - padding
-- payload size
-
-Graph conventions:
-  Left child:        / //
-  Right child:       \ \\
-  Unknown direction: | ||
-  Red:               \\ // ||
-  Black:             |  \   /
-  Unknown color:     |? \? /?
-  Not null:         variable_name!
-  Nullable:         variable_name
-*/
+// Element memory layout:
+// - sizeof(tree_node_t)
+//   - tree_node_t data
+//   - padding
+// - payload size
 
 static inline void *tree_node_get_key(tree_node_t *node) {
   return (char *) node + sizeof(tree_node_t);
@@ -57,11 +44,15 @@ size_t tree_get_node_size(size_t element_size) {
   return tree_get_node_size_inline(element_size);
 }
 
-// Create a single tree node.
-static inline tree_node_t *tree_node_new(tree_t *tree, void *key,
-                                         tree_node_t *parent) {
+// Create a single tree node. Returns nil if memory is not enough.
+static tree_node_t *tree_node_new(tree_t *tree, void *key, tree_node_t *parent) {
   tree_node_t *node =
       (tree_node_t *)tree->alloc(tree_get_node_size_inline(tree->element_size));
+  
+  if (!node) {
+    return tree->nil;
+  }
+  
   node->left = node->right = tree->nil;
   node->red = 1;
   node->parent = parent;
@@ -109,20 +100,8 @@ static void tree_node_insert_balance(tree_t *tree, tree_node_t *x) {
   while (x != tree->root && x->parent->red) {
     tree_node_t *pp = x->parent->parent;
     if (x->parent == pp->left) {
-      //            |
-      //            pp!
-      //          //   \?
-      //       parent!  y
-      //         ||
-      //         x!
       tree_node_t *y = pp->right;
       if (y->red) {
-        //            |
-        //            pp!
-        //          //  \\
-        //       parent!  y!
-        //         ||
-        //         x!
         x->parent->red = 0;
         y->red = 0;
         pp->red = 1;
@@ -132,23 +111,11 @@ static void tree_node_insert_balance(tree_t *tree, tree_node_t *x) {
           x = x->parent;
           tree_node_rotate_left(tree, x);
         }
-        //            |
-        //            pp!
-        //          //  \
-        //       parent!  y
-        //        //
-        //       x!
         x->parent->red = 0;
         pp->red = 1;
         tree_node_rotate_right(tree, pp);
       }
     } else {
-      //            |
-      //            pp!
-      //          /?  \\
-      //         y   parent!
-      //               ||
-      //               x!
       tree_node_t *y = pp->left;
       if (y->red) {
         x->parent->red = 0;
@@ -168,9 +135,9 @@ static void tree_node_insert_balance(tree_t *tree, tree_node_t *x) {
   }
 }
 
-// Returns if insertion happened.
-// Requirements: tree != 0, key != 0.
-static int tree_node_insert(tree_t *tree, void *key) {
+// Returns the node in the tree after insertion. If memory is not enough, nil
+// is returned instead. Requirements: tree != 0, key != 0.
+static tree_node_t *tree_node_insert(tree_t *tree, void *key) {
   int (*cmp)(void *, void *) = tree->cmp;
   tree_node_t *nil = tree->nil;
   tree_node_t *parent = nil, *cur = tree->root;
@@ -180,10 +147,15 @@ static int tree_node_insert(tree_t *tree, void *key) {
     result = cmp(key, tree_node_get_key(cur));
     if (result < 0)      parent = cur, cur = cur->left;
     else if (result > 0) parent = cur, cur = cur->right;
-    else                 return 0;// No insertion
+    else                 return cur;// No insertion
   }
 
   cur = tree_node_new(tree, key, parent);
+
+  // Out of memory
+  if (cur == nil) {
+    return nil;
+  }
 
   if (result < 0)        parent->left = cur;
   else if (result > 0)   parent->right = cur;
@@ -192,10 +164,10 @@ static int tree_node_insert(tree_t *tree, void *key) {
   tree_node_insert_balance(tree, cur);
 
   tree->count++;
-  return 1;
+  return cur;
 }
 
-static void *tree_node_find(const tree_t *tree, tree_node_t *node,
+static tree_node_t *tree_node_find(const tree_t *tree, tree_node_t *node,
                             void *key) {
   int (*cmp)(void *, void *) = tree->cmp;
   tree_node_t *nil = tree->nil;
@@ -204,16 +176,17 @@ static void *tree_node_find(const tree_t *tree, tree_node_t *node,
     int result = cmp(key, tree_node_get_key(node));
     if (result < 0)      node = node->left;
     else if (result > 0) node = node->right;
-    else                 return tree_node_get_key(node);
+    else                 return node;
   }
 
-  return 0;
+  return node;
 }
 
-void tree_insert(tree_t *tree, void *key) {
-  tree_node_insert(tree, key);
+void *tree_insert(tree_t *tree, void *key) {
+  tree_node_t *node = tree_node_insert(tree, key);
   tree->root->red = 0;
   tree->root->parent = tree->nil;
+  return node == tree->nil ? (void *)0 : tree_node_get_key(node);
 }
 
 size_t tree_size(const tree_t *tree) {
@@ -225,14 +198,14 @@ int tree_empty(const tree_t *tree) {
 }
 
 void *tree_find(const tree_t *tree, void *key) {
-  return tree_node_find(tree, tree->root, key);
+  tree_node_t *node = tree_node_find(tree, tree->root, key);
+  return node == tree->nil ? (void *)0 : tree_node_get_key(node);
 }
 
 // Requirement(s): tree != 0, cur != nil
 static inline tree_node_t *tree_node_leftmost(const tree_t *tree,
                                               tree_node_t *cur) {
   tree_node_t *nil = tree->nil;
-  assert(cur != nil);
   while (cur->left != nil) {
     cur = cur->left;
   }
@@ -307,12 +280,12 @@ void tree_init(tree_t *tree, size_t element_size, void *(*alloc)(size_t),
   tree->cmp = cmp;
   tree->element_size = element_size;
   tree->count = 0;
-  tree->nil = (tree_node_t *)alloc(sizeof(tree_node_t) + element_size);
+  tree->nil = (tree_node_t *)alloc(tree_get_node_size_inline(element_size));
   tree->nil->red = 0;
   tree->root = tree->nil;
 }
 
-void tree_node_remove_balance(tree_t *tree, tree_node_t *x) {
+static void tree_node_remove_balance(tree_t *tree, tree_node_t *x) {
 
   // maintain red-black tree balance after deleting node x
 
@@ -419,12 +392,15 @@ static void tree_node_remove_impl(tree_t *rbt, tree_node_t *z) {
   rbt->free(z);
 }
 
-void tree_node_remove(tree_t *tree, tree_node_t *node, void *key) {
-  key = tree_node_find(tree, node, key);
-  if (key) {
-    tree_node_remove_impl(tree, tree_node_from_key(key));
+// Returns 0 on success, -1 on failure (when key is not in the tree).
+static int tree_node_remove(tree_t *tree, tree_node_t *node, void *key) {
+  node = tree_node_find(tree, node, key);
+  if (node != tree->nil) {
+    tree_node_remove_impl(tree, node);
     tree->count--;
+    return 0;
   }
+  return -1;
 }
 
 static void tree_node_destroy(tree_t *tree, tree_node_t *node) {
@@ -444,8 +420,34 @@ void tree_destroy(tree_t *tree) {
   }
 }
 
-void tree_remove(tree_t *tree, void *key) {
+// Returns 0 on success, -1 on failure (when key is not in the tree).
+int tree_remove(tree_t *tree, void *key) {
   if (key) {
-    tree_node_remove(tree, tree->root, key);
+    return tree_node_remove(tree, tree->root, key);
+  }
+  return -1;
+}
+
+// k1, k2 must be in the tree.
+static inline void swap_key(tree_t *tree, void *k1, void *k2) {
+  size_t sz = tree->element_size;
+  void *t = tree_node_get_key(tree->nil);
+  memcpy(t, k1, sz);
+  memcpy(k1, k2, sz);
+  memcpy(k2, t, sz);
+}
+
+void tree_update(tree_t *tree, void *key) {
+  void *next = tree_next_key(tree, key);
+  while (next && tree->cmp(key, next) > 0) {
+    swap_key(tree, key, next);
+    key = next;
+    next = tree_next_key(tree, next);
+  }
+  void *last = tree_last_key(tree, key);
+  while (last && tree->cmp(key, last) < 0) {
+    swap_key(tree, key, last);
+    key = last;
+    last = tree_last_key(tree, last);
   }
 }
