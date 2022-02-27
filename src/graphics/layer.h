@@ -9,9 +9,9 @@
 
 #define REDRAW_XY_FACTOR 8
 
-typedef struct layer_info_t layer_info_t;
+typedef struct layer_t layer_t;
 
-struct layer_info_t {
+struct layer_t {
   u16 width, height; // Size
   u16 x, y;          // Position (top left)
   i16 rank;          // "rank" == 0 means invisible,
@@ -25,17 +25,17 @@ void init_layer_mgr();
 
 // Allocates an invisible layer. If "buf" == null, a new buffer will be
 // allocated by the function.
-layer_info_t *layer_new(int width, int height, int x, int y, u8 *buf);
+layer_t *layer_new(int width, int height, int x, int y, u8 *buf);
 
 // Set rank of the layer so it can be drawn. "rank" == 0 means invisible.
 // Larger rank means being drawn later. This function should not be presented
 // to users.
-void layer_set_rank(layer_info_t *layer, i16 rank);
+void layer_set_rank(layer_t *layer, i16 rank);
 
-void layer_move_to(layer_info_t *layer, i32 x, i32 y);
+void layer_move_to(layer_t *layer, i32 x, i32 y);
 
 // 0 on success, -1 on error
-int layer_free(layer_info_t *layer);
+int layer_free(layer_t *layer);
 
 // Redraw layers in given region.
 void layer_redraw_all(int x0, int y0, int x1, int y1);

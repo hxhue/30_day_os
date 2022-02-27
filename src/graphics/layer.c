@@ -32,7 +32,7 @@ struct layer_ctl_t {
   // (background). rank == 0 means layer is not visible.
   tree_t layers;
 
-  node_allocator_t tree_node_alloc;  // Stores pointers to layer_info_t
+  node_allocator_t tree_node_alloc;  // Stores pointers to layer_t
   node_allocator_t layer_info_alloc; 
 };
 
@@ -40,8 +40,8 @@ static layer_ctl_t layerctl;
 
 // Now we only store a pointer in tree node.
 static int layer_pointer_cmp(void *lhs, void *rhs) {
-  layer_info_t *l = *(layer_info_t **)lhs;
-  layer_info_t *r = *(layer_info_t **)rhs;
+  layer_t *l = *(layer_t **)lhs;
+  layer_t *r = *(layer_t **)rhs;
   if (l->rank != r->rank)    return l->rank - r->rank;
   if ((size_t)l < (size_t)r) return -1;
   if ((size_t)l > (size_t)r) return 1;
@@ -70,17 +70,17 @@ void init_layer_mgr() {
   xassert(mem);
   node_alloc_init(&layerctl.tree_node_alloc, mem, sz, tree_get_node_size(sizeof(void *)));
   tree_init(&layerctl.layers, sizeof(void *), alloc_tree_node, free_tree_node, layer_pointer_cmp);
-  sz = MAX_LAYER_NUM * sizeof(layer_info_t);
+  sz = MAX_LAYER_NUM * sizeof(layer_t);
   mem = alloc_mem_4k(sz);
   xassert(mem);
-  node_alloc_init(&layerctl.layer_info_alloc, mem, sz, sizeof(layer_info_t));
+  node_alloc_init(&layerctl.layer_info_alloc, mem, sz, sizeof(layer_t));
 }
 
-layer_info_t *layer_new(int width, int height, int x, int y, u8 *buffer) {
+layer_t *layer_new(int width, int height, int x, int y, u8 *buffer) {
   xassert(width > 0 && height > 0);
 
   u8 *buf = (u8 *)0;
-  layer_info_t *layer = (layer_info_t *)0;
+  layer_t *layer = (layer_t *)0;
   void *key = (void *)0;
   int success = 0;
   
@@ -99,7 +99,7 @@ layer_info_t *layer_new(int width, int height, int x, int y, u8 *buffer) {
     // Allocate layer node
     layer = node_alloc_get(&layerctl.layer_info_alloc);
     if (!layer) break;
-    *layer = (layer_info_t) {
+    *layer = (layer_t) {
       .width = width,
       .height = height,
       .x = x,
@@ -121,7 +121,7 @@ layer_info_t *layer_new(int width, int height, int x, int y, u8 *buffer) {
   return layer;
 }
 
-void layer_set_rank(layer_info_t *layer, i16 rank) {
+void layer_set_rank(layer_t *layer, i16 rank) {
   xassert(layer);
   void *key = tree_find(&layerctl.layers, &layer);
 
@@ -130,7 +130,7 @@ void layer_set_rank(layer_info_t *layer, i16 rank) {
     return;
   }
 
-  layer = *(layer_info_t **)key;
+  layer = *(layer_t **)key;
   layer->rank = clamp_i16(rank, 0, USER_RANK_MAX);
   tree_update(&layerctl.layers, key);
 
@@ -140,7 +140,7 @@ void layer_set_rank(layer_info_t *layer, i16 rank) {
 
 // Changes the position of the layer.
 // Requirements: x >= 0, x < 65536, y >= 0, y < 65536
-void layer_move_to(layer_info_t *layer, i32 x, i32 y) {
+void layer_move_to(layer_t *layer, i32 x, i32 y) {
   int x0 = layer->x, y0 = layer->y;
   layer->x = x;
   layer->y = y;
@@ -159,7 +159,7 @@ void layer_move_to(layer_info_t *layer, i32 x, i32 y) {
   }
 }
 
-int layer_free(layer_info_t *layer) {
+int layer_free(layer_t *layer) {
   // Save information before free
   u16 x = layer->x, y = layer->y;
   u16 w = layer->width, h = layer->height;
@@ -191,7 +191,7 @@ void layer_redraw_all(int x0, int y0, int x1, int y1) {
   void *key;
   for (key = tree_smallest_key(&layerctl.layers); key;
        key = tree_next_key(&layerctl.layers, key)) {
-    layer_info_t *layer = *(layer_info_t **)key;
+    layer_t *layer = *(layer_t **)key;
     int maxy = min_i32(layer->height, y1 - layer->y);
     int maxx = min_i32(layer->width, x1 - layer->x);
     int miny = max_i32(0, -layer->y);

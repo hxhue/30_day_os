@@ -7,7 +7,7 @@
 #include <support/debug.h>
 #include <support/queue.h>
 
-extern layer_info_t *g_mouse_layer;
+extern layer_t *g_mouse_layer;
 
 // For a mouse initialized in this system, a packet consists 3 bytes.
 // (For other systems, mouse may have an optional 4 bytes)

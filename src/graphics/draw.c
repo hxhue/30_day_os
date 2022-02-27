@@ -15,8 +15,8 @@
 // TODO: Mouse layer is still user layer
 #define MOUSE_LAYER_RANK 20000
 
-layer_info_t *g_mouse_layer;
-static layer_info_t *g_background_layer;
+layer_t *g_mouse_layer;
+static layer_t *g_background_layer;
 
 void init_palette();
 void init_cursor();
@@ -26,7 +26,7 @@ void init_background() {
   int w = g_boot_info.width;
   int h = g_boot_info.height;
 
-  layer_info_t *layer = layer_new(w, h, 0, 0, (u8 *)0);
+  layer_t *layer = layer_new(w, h, 0, 0, (u8 *)0);
   xassert(layer);
 
   draw_rect(layer, RGB_AQUA_DARK, 0,      0,          w,  h - 28);
@@ -101,11 +101,11 @@ void init_close_btn_image() {
 // sublayer cannot be found in layer tree, but drawing system are aware of them.
 
 // TODO: only pass content width and height to create a window
-layer_info_t *make_window(int width, int height, const char *title) {
-  layer_info_t *layer = layer_new(width, height, 0, 0, 0);
+layer_t *make_window(int width, int height, const char *title) {
+  layer_t *layer = layer_new(width, height, 0, 0, 0);
   
   if (!layer || !layer->buf)
-    return (layer_info_t *)0; // Failure
+    return (layer_t *)0; // Failure
   
   draw_rect(layer, RGB_GRAY, 0, 0, width, 1);
   draw_rect(layer, RGB_WHITE, 1, 1, width-1, 2);
@@ -124,7 +124,7 @@ layer_info_t *make_window(int width, int height, const char *title) {
   return layer;
 }
 
-void make_textbox(layer_info_t *layer, int x0, int y0, int width, int height,
+void make_textbox(layer_t *layer, int x0, int y0, int width, int height,
                   Color bg) {
   int x1 = x0 + width, y1 = y0 + height;
   draw_rect(layer, RGB_GRAY_DARK, x0 - 2, y0 - 3, x1 + 1 + 1, y0 - 3 + 1);
@@ -144,7 +144,7 @@ void make_textbox(layer_info_t *layer, int x0, int y0, int width, int height,
 // Requirements:
 // - layer and color are valid
 // - x0 >= 0, y0 >= 0 (For performance)
-void draw_char(layer_info_t *layer, Color color, int x0, int y0, char ch) {
+void draw_char(layer_t *layer, Color color, int x0, int y0, char ch) {
   xassert(x0 >= 0 && y0 >= 0);
   extern char hankaku[4096];
   u8 *font16x8 = (u8 *)&hankaku[ch * HANKAKU_CHAR_HEIGHT];
@@ -174,7 +174,7 @@ void draw_char(layer_info_t *layer, Color color, int x0, int y0, char ch) {
 // - layer and color are valid
 // - x0 >= 0, y0 >= 0 (For performance)
 // - s is not empty and accessible
-void draw_string(layer_info_t *layer, Color color, int x0, int y0, const char *s) {
+void draw_string(layer_t *layer, Color color, int x0, int y0, const char *s) {
   xassert(x0 >= 0 && y0 >= 0);
   for (; *s; (void)++s, (void)(x0 += 8)) {
     draw_char(layer, color, x0, y0, *s);
@@ -281,7 +281,7 @@ void init_palette() {
 
 /* Fills the rectangle with specified color index. The rectange area is defined
    by (x0, y0) (Include) -> (x1, y1) (Exclude). */
-void draw_rect(layer_info_t *layer, Color color, int x0, int y0, int x1, int y1) {
+void draw_rect(layer_t *layer, Color color, int x0, int y0, int x1, int y1) {
   u8 *vram = layer->buf;
   x0 = max_i32(x0, 0);
   y0 = max_i32(y0, 0);
@@ -301,7 +301,7 @@ void draw_rect(layer_info_t *layer, Color color, int x0, int y0, int x1, int y1)
 // - layer is valid
 // - rect is accessible, and holds at least width * height bytes
 // - width >= 0, height >= 0
-void draw_image(layer_info_t *layer, const u8 *rect, int width, int height, int x, int y) {
+void draw_image(layer_t *layer, const u8 *rect, int width, int height, int x, int y) {
   u8 *vram = layer->buf;
   int minj = max_i32(0, -y);
   int mini = max_i32(0, -x);
@@ -326,7 +326,7 @@ static inline void handle_event_redraw(const region_t *region) {
 }
 
 // Temporary
-layer_info_t *window_layer;
+layer_t *window_layer;
 
 // Temporary
 static void window_layer_timer_callback() {

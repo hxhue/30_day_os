@@ -46,7 +46,7 @@ void event_loop() {
       // does not have this effect.
       asm_sti_hlt();
 
-      // extern layer_info_t *window_layer;
+      // extern layer_t *window_layer;
       // char buf[64];
       // sprintf(buf, "%08u", (unsigned)g_counter.count);
       // draw_rect(window_layer, RGB_GRAY, 40, 28, 120, 44);
