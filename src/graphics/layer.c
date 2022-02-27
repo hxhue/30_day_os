@@ -22,8 +22,6 @@
 typedef struct layer_ctl_t layer_ctl_t;
 
 struct layer_ctl_t {
-  i16 next_id;
-  // Number of total layers and invisible layers
   u16 ntotal;
 
   // Needs to be allocated dynamically according to size of vram.
@@ -44,7 +42,10 @@ static layer_ctl_t layerctl;
 static int layer_pointer_cmp(void *lhs, void *rhs) {
   layer_info_t *l = *(layer_info_t **)lhs;
   layer_info_t *r = *(layer_info_t **)rhs;
-  return (l->rank != r->rank) ? (l->rank - r->rank) : l->id - r->id;
+  if (l->rank != r->rank)    return l->rank - r->rank;
+  if ((size_t)l < (size_t)r) return -1;
+  if ((size_t)l > (size_t)r) return 1;
+  return 0;
 };
 
 static void *alloc_tree_node(size_t size) {
@@ -75,41 +76,46 @@ void init_layer_mgr() {
   node_alloc_init(&layerctl.layer_info_alloc, mem, sz, sizeof(layer_info_t));
 }
 
-layer_info_t *layer_new(int width, int height, int x, int y, u8 *buf) {
+layer_info_t *layer_new(int width, int height, int x, int y, u8 *buffer) {
   xassert(width > 0 && height > 0);
-  // Allocate buffer
-  if (!buf) {
-    int sz = width * height;
-    buf = (u8 *)alloc_mem(sz);
-    if (!buf) {
-      return (layer_info_t *)0;
-    }
-    int i;
-    for (i = 0; i < sz; ++i) {
-      buf[i] = RGB_TRANSPARENT;
-    }
-  }
 
-  // Allocate layer node
-  layer_info_t *layer = node_alloc_get(&layerctl.layer_info_alloc);
-  if (!layer) {
-    reclaim_mem(buf, width * height);
-    return (layer_info_t *)0;
-  }
-  *layer = (layer_info_t) {
-    .width = width,
-    .height = height,
-    .x = x,
-    .y = y,
-    .rank = 0, // Layers are invisible initially.
-    .buf = buf,
-  };
+  u8 *buf = (u8 *)0;
+  layer_info_t *layer = (layer_info_t *)0;
+  void *key = (void *)0;
+  int success = 0;
+  
+  do {
+    // Allocate buffer
+    if (!buffer) {
+      int sz = width * height;
+      buf = (u8 *)alloc_mem_4k(sz);
+      if (!buf) break;
+      for (int i = 0; i < sz; ++i) {
+        buf[i] = RGB_TRANSPARENT;
+      }
+      buffer = buf;
+    }
 
-  // Insert pointer to the layer into the tree
-  void *key = tree_insert(&layerctl.layers, &layer);
-  if (!key) { // Out of memory
-    reclaim_mem(buf, width * height);
-    return (layer_info_t *)0;
+    // Allocate layer node
+    layer = node_alloc_get(&layerctl.layer_info_alloc);
+    if (!layer) break;
+    *layer = (layer_info_t) {
+      .width = width,
+      .height = height,
+      .x = x,
+      .y = y,
+      .rank = 0, // Layers are invisible initially.
+      .buf = buffer,
+    };
+
+    // Insert pointer to the layer into the tree
+    key = tree_insert(&layerctl.layers, &layer);
+    if (key) success = 1;
+  } while (0);
+
+  if (!success) {
+    if (buf)   reclaim_mem_4k(buf, width * height);
+    if (layer) node_alloc_reclaim(&layerctl.layer_info_alloc, layer);
   }
 
   return layer;

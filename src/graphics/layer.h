@@ -12,8 +12,6 @@
 typedef struct layer_info_t layer_info_t;
 
 struct layer_info_t {
-  // u8 inuse;
-  i16 id;
   u16 width, height; // Size
   u16 x, y;          // Position (top left)
   i16 rank;          // "rank" == 0 means invisible,
@@ -30,7 +28,8 @@ void init_layer_mgr();
 layer_info_t *layer_new(int width, int height, int x, int y, u8 *buf);
 
 // Set rank of the layer so it can be drawn. "rank" == 0 means invisible.
-// Larger rank means being drawn later.
+// Larger rank means being drawn later. This function should not be presented
+// to users.
 void layer_set_rank(layer_info_t *layer, i16 rank);
 
 void layer_move_to(layer_info_t *layer, i32 x, i32 y);

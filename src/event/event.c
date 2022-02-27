@@ -45,15 +45,14 @@ void event_loop() {
       // HLT from making CPU sleep. Calling asm_sti() and asm_hlt() separately
       // does not have this effect.
       asm_sti_hlt();
-      // asm_sti();
 
-      extern layer_info_t *window_layer;
-      char buf[64];
-      sprintf(buf, "%08u", (unsigned)g_counter.count);
-      draw_rect(window_layer, RGB_GRAY, 40, 28, 120, 44);
-      draw_string(window_layer, RGB_BLACK, 40, 28, buf);
-      int x = window_layer->x, y = window_layer->y;
-      emit_redraw_event(x + 40, y + 28, x + 120, y + 44);
+      // extern layer_info_t *window_layer;
+      // char buf[64];
+      // sprintf(buf, "%08u", (unsigned)g_counter.count);
+      // draw_rect(window_layer, RGB_GRAY, 40, 28, 120, 44);
+      // draw_string(window_layer, RGB_BLACK, 40, 28, buf);
+      // int x = window_layer->x, y = window_layer->y;
+      // emit_redraw_event(x + 40, y + 28, x + 120, y + 44);
       continue;
     }
 

@@ -420,7 +420,6 @@ void tree_destroy(tree_t *tree) {
   }
 }
 
-// Returns 0 on success, -1 on failure (when key is not in the tree).
 int tree_remove(tree_t *tree, void *key) {
   if (key) {
     return tree_node_remove(tree, tree->root, key);

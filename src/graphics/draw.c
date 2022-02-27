@@ -1,3 +1,4 @@
+#include "graphics/draw.h"
 #include <boot/boot.h>
 #include <event/event.h>
 #include <event/timer.h>
@@ -94,6 +95,12 @@ void init_close_btn_image() {
   }
 }
 
+// TODO: key listener
+
+// TODO: sublayer
+// sublayer cannot be found in layer tree, but drawing system are aware of them.
+
+// TODO: only pass content width and height to create a window
 layer_info_t *make_window(int width, int height, const char *title) {
   layer_info_t *layer = layer_new(width, height, 0, 0, 0);
   
@@ -115,6 +122,20 @@ layer_info_t *make_window(int width, int height, const char *title) {
             CLOSE_BTN_IMAGE_HEIGHT, width - 21, 5);
 
   return layer;
+}
+
+void make_textbox(layer_info_t *layer, int x0, int y0, int width, int height,
+                  Color bg) {
+  int x1 = x0 + width, y1 = y0 + height;
+  draw_rect(layer, RGB_GRAY_DARK, x0 - 2, y0 - 3, x1 + 1 + 1, y0 - 3 + 1);
+  draw_rect(layer, RGB_GRAY_DARK, x0 - 3, y0 - 3, x0 - 3 + 1, y1 + 1 + 1);
+  draw_rect(layer, RGB_WHITE, x0 - 3, y1 + 2, x1 + 1 + 1, y1 + 2 + 1);
+  draw_rect(layer, RGB_WHITE, x1 + 2, y0 - 3, x1 + 2 + 1, y1 + 2 + 1);
+  draw_rect(layer, RGB_BLACK, x0 - 1, y0 - 2, x1 + 0 + 1, y0 - 2 + 1);
+  draw_rect(layer, RGB_BLACK, x0 - 2, y0 - 2, x0 - 2 + 1, y1 + 0 + 1);
+  draw_rect(layer, RGB_GRAY, x0 - 2, y1 + 1, x1 + 0 + 1, y1 + 1 + 1);
+  draw_rect(layer, RGB_GRAY, x1 + 1, y0 - 2, x1 + 1 + 1, y1 + 1 + 1);
+  draw_rect(layer, bg, x0 - 1, y0 - 1, x1 + 0 + 1, y1 + 0 + 1);
 }
 
 #define HANKAKU_CHAR_WIDTH  8
@@ -304,9 +325,11 @@ static inline void handle_event_redraw(const region_t *region) {
   }
 }
 
+// Temporary
 layer_info_t *window_layer;
 
-void window_layer_timer_callback() {
+// Temporary
+static void window_layer_timer_callback() {
   draw_rect(window_layer, xrand() % RGB_TRANSPARENT, 1, 1, 32, 32);
   emit_redraw_event(1, 1, 32, 32);
   add_timer(100, window_layer_timer_callback);
@@ -319,11 +342,12 @@ void init_display() {
   init_background(); // Background layer
   init_cursor();     // Cursor layer
 
-  window_layer = make_window(160, 68, "Counter");
+  window_layer = make_window(160, 52, "Counter");
   layer_move_to(window_layer, 160, 100);
+  make_textbox(window_layer, 8, 28, 144, 16, RGB_WHITE);
   layer_set_rank(window_layer, 2);
 
-  add_timer(50, window_layer_timer_callback);
+  // add_timer(50, window_layer_timer_callback);
 }
 
 static queue_t redraw_msg_queue;
