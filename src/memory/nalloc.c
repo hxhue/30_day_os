@@ -6,11 +6,10 @@
 
 #include <stddef.h>
 #include <string.h>
-#include "node_allocator.h"
+#include "nalloc.h"
 #include "support/debug.h"
-#include <support/debug.h>
 
-void node_alloc_init(node_allocator_t *alloc, void *memory, size_t memory_size,
+void node_alloc_init(node_alloc_t *alloc, void *memory, size_t memory_size,
                      size_t element_size) {
   alloc->element_size = element_size;
   alloc->real_size = memory_size;
@@ -20,7 +19,7 @@ void node_alloc_init(node_allocator_t *alloc, void *memory, size_t memory_size,
   memset(alloc->mem, -1, alloc->bmsz);
 }
 
-void *node_alloc_get(node_allocator_t *alloc) {
+void *node_alloc_get(node_alloc_t *alloc) {
   int found = 0;
   size_t bit, i;
   
@@ -57,7 +56,7 @@ void *node_alloc_get(node_allocator_t *alloc) {
   return (void *)0; // Out of memory
 }
 
-int node_alloc_reclaim(node_allocator_t *alloc, void *addr) {
+int node_alloc_reclaim(node_alloc_t *alloc, void *addr) {
   size_t size = 1 + 8 * alloc->element_size;
   if (addr < (void *)(alloc->mem + alloc->bmsz) ||
       addr >= (void *)(alloc->mem + size)) {
@@ -75,3 +74,16 @@ int node_alloc_reclaim(node_allocator_t *alloc, void *addr) {
   alloc->mem[i/8] |= byte;
   return 0;
 }
+
+// void node_alloc_wrap(node_alloc_t *alloc, void *memory, size_t memory_size,
+//                      size_t element_size, malloc_func_t *wrapped_malloc, 
+//                      free_func_t *wrapped_free) {
+//   alloc->element_size = element_size;
+//   alloc->real_size = memory_size;
+//   alloc->bmsz = memory_size / (1 + 8 * element_size);
+//   alloc->mem = (unsigned char *)memory;
+//   alloc->fast_count = 0;
+//   memset(alloc->mem, -1, alloc->bmsz);
+
+//   // TODO: Wrap malloc and free
+// }

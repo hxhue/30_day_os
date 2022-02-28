@@ -1,3 +1,5 @@
+#include "event/timer.h"
+#include "support/asm.h"
 #include <boot/int.h>
 #include <event/mouse.h>
 #include <event/keyboard.h>
@@ -52,9 +54,34 @@ void init_pic() {
 // emit_*() are constant-time functions and are safe to call in interrupt 
 // handlers.
 
+static inline void task_switch(int sel) {
+  asm_farjmp(0, sel * 8);
+}
+
+#define KERNEL_TASK_MAX_DELAY 10
+#define KERNEL_TASK_GDT_ENTRY 3
+
 void int_handler0x20(u32 esp) {
   asm_out8(PIC0_OCW2, 0x60 + 0x0); /* Accept interrupt 0x0 */
   ++g_counter.count;
+
+  // static int kernel_task_delay = 0;
+  // int sel = -1;
+  // if (++kernel_task_delay >= KERNEL_TASK_MAX_DELAY) {
+  //   // Timed out. Next task is kernel task.
+  //   kernel_task_delay = 0;
+  //   sel = KERNEL_TASK_GDT_ENTRY;
+  // } else {
+  //   // TODO: Check if current task has timed out
+  //   // Select a task
+  //   sel = (g_counter.count % 2 == 0) ? 3 : 4;
+  //   // TODO: If task == KERNEL_TASK_GDT_ENTRY, reset kernel_task_delay.
+  //   if (sel == KERNEL_TASK_GDT_ENTRY)
+  //     kernel_task_delay = 0;
+  // }
+
+  // if (sel >= 0)
+  //   task_switch(sel);
 }
 
 /* PS/2 keyboard, 0x20 + 1 (kbd) = 0x21. esp is the 32-bit stack register. */

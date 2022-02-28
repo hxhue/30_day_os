@@ -10,7 +10,8 @@
     GLOBAL _asm_load_gdtr,        _asm_load_idtr
     GLOBAL _asm_int_handler0x21,  _asm_int_handler0x27
     GLOBAL _asm_int_handler0x2c,  _asm_int_handler0x20
-    GLOBAL _asm_load_cr0, _asm_store_cr0
+    GLOBAL _asm_load_cr0, _asm_store_cr0, _asm_load_tr
+    GLOBAL _asm_farjmp           ; , _asm_task_switch_4
 
     EXTERN _int_handler0x21, _int_handler0x27, _int_handler0x2c
     EXTERN _int_handler0x20
@@ -210,4 +211,18 @@ _asm_load_cr0:              ; int asm_load_cr0(void)
 _asm_store_cr0:             ; void asm_store_cr0(u32 cr0)
     MOV     EAX, [ESP+4]
     MOV     CR0, EAX
+    RET
+
+_asm_load_tr:               ; void asm_load_tr(int tr)
+    LTR     [ESP+4]
+    RET
+
+; _asm_task_switch_4:         ; void asm_task_switch_4()
+;     JMP     4*8:0
+;     RET
+
+; JMP FAR needs 6 bytes for arguments: eip + cs
+; We can just pass address of eip, because x86 is little endian.
+_asm_farjmp:                ; void asm_farjmp(int eip, int cs)
+    JMP FAR [ESP+4]
     RET

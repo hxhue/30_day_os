@@ -13,11 +13,9 @@ extern "C" {
 typedef struct queue_t {
   int tag;
   u8 *queue;
-  u32 front, end, capacity, element_size;
-  void *(*alloc)(unsigned long);
-  // free(addr, size)
-  // If size is not used in free(), a wrapper is needed.
-  void (*free)(void *, unsigned long);
+  size_t front, end, capacity, element_size;
+  malloc_fp_t alloc;
+  free_fp_t free;
 } queue_t;
 
 static inline unsigned int queue_size(const queue_t *q) {
@@ -28,9 +26,9 @@ static inline int queue_is_empty(const queue_t *q) {
   return q->front == q->end;
 }
 
-static inline void queue_init(queue_t *q, unsigned element_size,
-                              unsigned capacity, void *(*alloc)(unsigned long),
-                              void (*free)(void *, unsigned long)) {
+static inline void queue_init(queue_t *q, size_t element_size,
+                              size_t capacity, malloc_fp_t alloc,
+                              free_fp_t free) {
   xassert(q && alloc && free);
   q->tag = QUEUE_STRUCT_TAG;
   q->element_size = element_size;
@@ -44,7 +42,7 @@ static inline void queue_init(queue_t *q, unsigned element_size,
 
 static inline void queue_destroy(queue_t *q) {
   q->front = q->end;
-  q->free(q->queue, q->element_size * q->capacity);
+  q->free(q->queue);
   q->queue = 0;
 }
 

@@ -35,7 +35,7 @@ static queue_t keyboard_msg_queue;
 
 void init_keyboard_event_queue() {
   queue_init(&keyboard_msg_queue, sizeof(unsigned), KEYBOARD_MSG_QUEUE_SIZE,
-             alloc_mem, reclaim_mem_no_return_value);
+             alloc_mem2, reclaim_mem2);
 }
 
 void emit_keyboard_event(unsigned data) {

@@ -8,11 +8,13 @@ file:
 		.objファイル、.libファイルを記載 */
 	/* なお、このセクションはフルパスで書いてもよい。 */
 	/* 例：  c:/osask/gg00libc.lib;  */
-	./lib/golibc.lib;
+	
+	/* 2022.2.28: Do not use this lib */
+	/*./lib/golibc.lib; */
 
 label:
 	/* 必ずリンクしなければいけないラベルを指定 */
 	/* エントリポイントを指定すればいいと思ってください */
-	_OS_startup;
+	_startup;
 
 	/* 上記3セクションの順序は入れ替えてはいけません! */

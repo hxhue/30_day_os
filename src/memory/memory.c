@@ -1,4 +1,6 @@
+#include "memory/memory.h"
 #include <memory/memory.h>
+#include <stddef.h>
 #include <support/asm.h>
 #include <support/debug.h>
 #include <support/type.h>
@@ -19,7 +21,7 @@ typedef struct memory_pool_t {
   u32 frees, maxfrees, lostsize, losts;
 } memory_pool_t;
 
-static memory_pool_t *g_mem_set;
+static memory_pool_t *g_mem_pool;
 
 u32 get_max_mem_addr_impl(u32 start, u32 end) {
   u32 i, old;
@@ -91,7 +93,7 @@ u32 get_max_mem_addr() {
 void *alloc_mem(unsigned long size) {
   unsigned int i;
   void *a;
-  memory_pool_t *mem = g_mem_set;
+  memory_pool_t *mem = g_mem_pool;
   for (i = 0; i < mem->frees; i++) {
     if (mem->entries[i].size >= size) {
       a = mem->entries[i].addr;
@@ -109,11 +111,27 @@ void *alloc_mem(unsigned long size) {
   return (void *)0;
 }
 
+void *alloc_mem2(size_t size) {
+  size_t *p = (size_t *)alloc_mem(size + sizeof(size_t));
+  if (p) {
+    *p = size;
+    return p + 1;
+  }
+  return (void *)0;
+}
+
+void reclaim_mem2(void *addr) {
+  if (addr != 0) {
+    size_t *real_addr = (size_t *)addr - 1;
+    reclaim_mem(real_addr, *real_addr);
+  }
+}
+
 int reclaim_mem(void *addr, unsigned long size) {
   if (addr == 0) {
     return 0;
   }
-  memory_pool_t *mem = g_mem_set;
+  memory_pool_t *mem = g_mem_pool;
   u32 i, j;
   for (i = 0; i < mem->frees; i++) {
     if (mem->entries[i].addr > addr) {
@@ -161,7 +179,7 @@ int reclaim_mem(void *addr, unsigned long size) {
 }
 
 u32 get_avail_mem() {
-  memory_pool_t *mem = g_mem_set;
+  memory_pool_t *mem = g_mem_pool;
   unsigned int i, t = 0;
   for (i = 0; i < mem->frees; i++) {
     t += mem->entries[i].size;
@@ -170,7 +188,7 @@ u32 get_avail_mem() {
 }
 
 void init_mem_mgr() {
-  g_mem_set = (memory_pool_t *)MEM_SET_ADDR;
+  g_mem_pool = (memory_pool_t *)MEM_SET_ADDR;
   reclaim_mem((void *)0x00001000, 0x0009e000);
   u32 max_addr = get_max_mem_addr();
   reclaim_mem((void *)0x00400000, max_addr - 0x00400000);

@@ -6,6 +6,9 @@ extern "C" {
 #endif
 
 #include <support/type.h>
+#include <task/task.h>
+
+extern TSS32_t g_tss_sys, g_tss_b;
 
 typedef struct boot_info_t {
   u8 cyls, leds, vmode, reserve;

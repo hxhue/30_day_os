@@ -8,16 +8,14 @@
 	extern "C" {
 #endif
 
-#if (!defined(NULL))
-	#define NULL	((void *) 0)
-#endif
-
 #include <stdarg.h>
 #include <stddef.h>
 
-// Bug (in this lib version): "%08llu" makes program hang.
-int sprintf(char *s, const char *format, ...);
-int vsprintf(char *s, const char *format, va_list arg);
+// // Bug (in this golibc.lib version): "%08llu" makes program hang.
+// int sprintf(char *s, const char *format, ...);
+// int vsprintf(char *s, const char *format, va_list arg);
+
+#include <support/printf.h>
 
 #if (defined(__cplusplus))
 	}

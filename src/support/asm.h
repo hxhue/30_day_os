@@ -1,5 +1,5 @@
-#ifndef ASM_FN_H
-#define ASM_FN_H
+#ifndef ASM_H
+#define ASM_H
 
 #if (defined(__cplusplus))
 extern "C" {
@@ -27,6 +27,8 @@ void asm_int_handler0x27();
 void asm_int_handler0x2c();
 u32  asm_load_cr0();
 void asm_store_cr0( u32 cr0 );
+void asm_load_tr(int tr);
+void asm_farjmp(int eip, int cs);
 
 #if (defined(__cplusplus))
 }

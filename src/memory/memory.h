@@ -6,16 +6,22 @@ extern "C" {
 #endif
 
 #include <support/type.h>
+#include <stddef.h>
 
 void init_mem_mgr();
-
 u32  get_max_mem_addr();
+u32  get_avail_mem();
+
+// Return values of alloc_mem* family: 0 on failure, other values on success
 void *alloc_mem(unsigned long size);
+void *alloc_mem2(size_t size);
 void *alloc_mem_4k(unsigned long size);
-int  reclaim_mem(void *addr, unsigned long size); // 0 for success, -1 for failure
+
+// Return values of reclaim_mem* family: 0 on success, -1 on failure
+int  reclaim_mem(void *addr, unsigned long size); 
+void reclaim_mem2(void *addr);
 int  reclaim_mem_4k(void *addr, unsigned long size);
 void reclaim_mem_no_return_value(void *addr, unsigned long size);
-u32  get_avail_mem();
 
 #if (defined(__cplusplus))
 }

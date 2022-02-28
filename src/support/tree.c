@@ -3,30 +3,30 @@
 #include <string.h>
 
 #ifdef __GNUC__
+  #define STRUCT_PACK_START 
+  #define STRUCT_PACK_END   __attribute__((__packed__))
+#elif defined (_MSC_VER)
+  #define STRUCT_PACK_START __pragma(pack(push, 1)) 
+  #define STRUCT_PACK_END   __pragma(pack(pop))
+#else
+  #define STRUCT_PACK_START
+  #define STRUCT_PACK_END  
+#endif
 
+STRUCT_PACK_START
 struct tree_node_t {
-  int red; // 1 for red, 0 for black
+  int red;        // 1 for red, 0 for black
   struct tree_node_t *left, *right, *parent;
-} __attribute__((__packed__));
-
-#endif
-
-#ifdef _MSC_VER
-
-__pragma(pack(push, 1)) struct tree_node_t {
-  int red; // 1 for red, 0 for black
-  struct tree_node_t *left, *right, *parent;
-} __pragma(pack(pop));
-
-#endif
+}
+STRUCT_PACK_END;
 
 typedef struct tree_node_t tree_node_t;
 
 // Element memory layout:
-// - sizeof(tree_node_t)
-//   - tree_node_t data
-//   - padding
-// - payload size
+// sizeof(tree_node_t) bytes for header
+//    Node header data
+//    Paddings (when "packed" attribute is not availble)
+// "element_size" bytes for an element
 
 static inline void *tree_node_get_key(tree_node_t *node) {
   return (char *) node + sizeof(tree_node_t);

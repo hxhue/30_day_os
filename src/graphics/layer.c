@@ -1,6 +1,5 @@
 #include "graphics/draw.h"
 #include "boot/boot.h"
-#include "memory/node_allocator.h"
 #include "memory/memory.h"
 #include "support/tree.h"
 #include "graphics/layer.h"
@@ -14,10 +13,11 @@
 #include <support/debug.h>
 #include <string.h>
 #include <stdio.h>
-#include <memory/node_allocator.h>
+#include <event/timer.h>
+#include <memory/nalloc.h>
 
 #define MAX_LAYER_NUM 2048
-#define USER_RANK_MAX 10000
+#define LAYER_RANK_MAX 127
 
 typedef struct layer_ctl_t layer_ctl_t;
 
@@ -32,8 +32,8 @@ struct layer_ctl_t {
   // (background). rank == 0 means layer is not visible.
   tree_t layers;
 
-  node_allocator_t tree_node_alloc;  // Stores pointers to layer_t
-  node_allocator_t layer_info_alloc; 
+  node_alloc_t tree_node_alloc;  // Stores pointers to layer_t
+  node_alloc_t layer_info_alloc; 
 };
 
 static layer_ctl_t layerctl;
@@ -42,7 +42,16 @@ static layer_ctl_t layerctl;
 static int layer_pointer_cmp(void *lhs, void *rhs) {
   layer_t *l = *(layer_t **)lhs;
   layer_t *r = *(layer_t **)rhs;
-  if (l->rank != r->rank)    return l->rank - r->rank;
+
+  if (l->rank != r->rank) {
+    return l->rank - r->rank;
+  }
+
+  // Same rank
+  if (l->last_active_time < r->last_active_time) return -1;
+  if (l->last_active_time > r->last_active_time) return 1;
+
+  // Same rank and last_active_time
   if ((size_t)l < (size_t)r) return -1;
   if ((size_t)l > (size_t)r) return 1;
   return 0;
@@ -100,12 +109,14 @@ layer_t *layer_new(int width, int height, int x, int y, u8 *buffer) {
     layer = node_alloc_get(&layerctl.layer_info_alloc);
     if (!layer) break;
     *layer = (layer_t) {
+      .focusable = 1,
       .width = width,
       .height = height,
       .x = x,
       .y = y,
       .rank = 0, // Layers are invisible initially.
       .buf = buffer,
+      .last_active_time = 0
     };
 
     // Insert pointer to the layer into the tree
@@ -122,6 +133,10 @@ layer_t *layer_new(int width, int height, int x, int y, u8 *buffer) {
 }
 
 void layer_set_rank(layer_t *layer, i16 rank) {
+  layer_set_rank_no_bound(layer, clamp_i16(rank, 0, LAYER_RANK_MAX));
+}
+
+void layer_set_rank_no_bound(layer_t *layer, i16 rank) {
   xassert(layer);
   void *key = tree_find(&layerctl.layers, &layer);
 
@@ -131,11 +146,16 @@ void layer_set_rank(layer_t *layer, i16 rank) {
   }
 
   layer = *(layer_t **)key;
-  layer->rank = clamp_i16(rank, 0, USER_RANK_MAX);
+  layer->rank = rank;
+  layer->last_active_time = g_counter.count;
   tree_update(&layerctl.layers, key);
 
   emit_redraw_event(layer->x, layer->y, layer->x + layer->width,
                     layer->y + layer->height);
+}
+
+void layer_bring_to_front(layer_t *layer) {
+  layer_set_rank(layer, LAYER_RANK_MAX);
 }
 
 // Changes the position of the layer.
@@ -178,7 +198,7 @@ int layer_free(layer_t *layer) {
 // (x0, y0) (Include) -> (x1, y1) (Exclude) is the area on the screen you want
 // to redraw. The coordinates are based on the whole screen, not any of the
 // possibly not-full-sreen layers.
-void layer_redraw_all(int x0, int y0, int x1, int y1) {
+void layers_redraw_all(int x0, int y0, int x1, int y1) {
   i32 winh = g_boot_info.height, winw = g_boot_info.width;
   u8 *vram = layerctl.vram;
   x0 = clamp_i32(x0, 0, winw);
@@ -210,4 +230,37 @@ void layer_redraw_all(int x0, int y0, int x1, int y1) {
 
   // Copy buffer to vga buffer
   memcpy((void *)g_boot_info.vram_addr, vram, winh * winw);
+}
+
+void layers_receive_mouse_event(int x, int y, mouse_msg_t msg) {
+  // xprintf("Searching layers tree. Size: %d\n", tree_size(&layerctl.layers));
+
+  for (void *key = tree_largest_key(&layerctl.layers); key; 
+      key = tree_last_key(&layerctl.layers, key)) {
+    layer_t *layer = *(layer_t **)key;
+
+    // Skip mouse layer itself.
+    if (layer->rank > LAYER_RANK_MAX) {
+      continue;
+    }
+
+    if (x >= layer->x && x < (layer->x + layer->width) && 
+        y >= layer->y && y < (layer->y + layer->height)) {
+      int btn = msg.buf[0] & 0x07;
+
+      // Left button clicked
+      if (btn & 0x01) {
+        // Make the window focus
+        if (layer->focusable) {
+          layer_bring_to_front(layer);
+          // TODO: notify the layer who loses focus
+        }
+        // xprintf("Layer #%p is clicked by mouse\n", layer);
+      }
+
+      // TODO: send mouse event to process of the layer
+      break;
+    }
+    // xprintf("Layer #%p is skipped by mouse\n", layer);
+  }
 }

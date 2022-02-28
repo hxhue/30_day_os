@@ -5,6 +5,8 @@
 extern "C" {
 #endif
 
+#include <stddef.h>
+
 typedef char               i8;
 typedef short              i16;
 typedef int                i32;
@@ -14,6 +16,10 @@ typedef unsigned short     u16;
 typedef unsigned int       u32;
 typedef unsigned long long u64;
 
+typedef void (*free_fp_t)(void *);
+typedef void *(*malloc_fp_t)(size_t);
+
+// TODO: Remove useless tags
 #define QUEUE_STRUCT_TAG          0x10
 #define PRIORITY_QUEUE_STRUCT_TAG 0x20
 

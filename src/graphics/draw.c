@@ -1,4 +1,5 @@
 #include "graphics/draw.h"
+#include "graphics/layer.h"
 #include <boot/boot.h>
 #include <event/event.h>
 #include <event/timer.h>
@@ -12,8 +13,7 @@
 #include <support/queue.h>
 #include <support/debug.h>
 
-// TODO: Mouse layer is still user layer
-#define MOUSE_LAYER_RANK 20000
+#define MOUSE_LAYER_RANK 128
 
 layer_t *g_mouse_layer;
 static layer_t *g_background_layer;
@@ -56,6 +56,7 @@ void init_background() {
   sprintf(buf, "rand: %d", xrand());
   draw_string(layer, RGB_WHITE, 0, 96, buf);
 
+  layer->focusable = 0;
   layer_set_rank(layer, 1);
 
   g_background_layer = layer;
@@ -124,7 +125,7 @@ layer_t *make_window(int width, int height, const char *title) {
   return layer;
 }
 
-void make_textbox(layer_t *layer, int x0, int y0, int width, int height,
+void draw_textbox(layer_t *layer, int x0, int y0, int width, int height,
                   Color bg) {
   int x1 = x0 + width, y1 = y0 + height;
   draw_rect(layer, RGB_GRAY_DARK, x0 - 2, y0 - 3, x1 + 1 + 1, y0 - 3 + 1);
@@ -237,7 +238,7 @@ void init_cursor() {
   g_mouse_layer = layer_new(CURSOR_WIDTH, CURSOR_HEIGHT, g_boot_info.width / 2,
                             g_boot_info.height / 2, &cursor_image[0][0]);
   xassert(g_mouse_layer);
-  layer_set_rank(g_mouse_layer, MOUSE_LAYER_RANK);
+  layer_set_rank_no_bound(g_mouse_layer, MOUSE_LAYER_RANK);
 }
 
 /* Registers 16 predefined rgb colors by writing the first color index, and then
@@ -319,20 +320,10 @@ void draw_image(layer_t *layer, const u8 *rect, int width, int height, int x, in
 
 static inline void handle_event_redraw(const region_t *region) {
   if (region->x0 >= region->x1 || region->y0 >= region->y1) {
-    layer_redraw_all(0, 0, g_boot_info.width, g_boot_info.height);
+    layers_redraw_all(0, 0, g_boot_info.width, g_boot_info.height);
   } else {
-    layer_redraw_all(region->x0, region->y0, region->x1, region->y1);
+    layers_redraw_all(region->x0, region->y0, region->x1, region->y1);
   }
-}
-
-// Temporary
-layer_t *window_layer;
-
-// Temporary
-static void window_layer_timer_callback() {
-  draw_rect(window_layer, xrand() % RGB_TRANSPARENT, 1, 1, 32, 32);
-  emit_redraw_event(1, 1, 32, 32);
-  add_timer(100, window_layer_timer_callback);
 }
 
 void init_display() {
@@ -341,13 +332,6 @@ void init_display() {
   init_images();
   init_background(); // Background layer
   init_cursor();     // Cursor layer
-
-  window_layer = make_window(160, 52, "Counter");
-  layer_move_to(window_layer, 160, 100);
-  make_textbox(window_layer, 8, 28, 144, 16, RGB_WHITE);
-  layer_set_rank(window_layer, 2);
-
-  // add_timer(50, window_layer_timer_callback);
 }
 
 static queue_t redraw_msg_queue;
@@ -358,7 +342,7 @@ static queue_t redraw_msg_queue;
 // we can know when we should combine redrawing events.
 void init_redraw_event_queue() {
   queue_init(&redraw_msg_queue, sizeof(region_t), REDRAW_MSG_QUEUE_SIZE,
-             alloc_mem, reclaim_mem_no_return_value);
+             alloc_mem2, reclaim_mem2);
 }
 
 void emit_redraw_event(int x0, int y0, int x1, int y1) {

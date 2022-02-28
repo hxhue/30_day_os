@@ -1,3 +1,4 @@
+#include "boot/boot.h"
 #include <boot/gdt.h>
 #include <support/asm.h>
 #include <string.h>
@@ -63,6 +64,8 @@ void init_gdt() {
   segment_descriptor_t *gdt = (segment_descriptor_t *)0x00270000;
   memset(gdt, 0, GDT_LIMIT + 1);
   asm_load_gdtr(GDT_LIMIT, 0x00270000);
-  set_gdt_entry(gdt + 1, 0xffffffff, 0,          0x92, 0x04);
-  set_gdt_entry(gdt + 2, 0x0007ffff, 0x00280000, 0x9a, 0x04);
+  set_gdt_entry(gdt + 1, 0xffffffff, 0,               0x92, 0x04);
+  set_gdt_entry(gdt + 2, 0x0007ffff, 0x00280000,      0x9a, 0x04);
+  set_gdt_entry(gdt + 3, 103,        (u32)&g_tss_sys, 0x89, 0x00);
+  set_gdt_entry(gdt + 4, 103,        (u32)&g_tss_b,   0x89, 0x00);
 }
