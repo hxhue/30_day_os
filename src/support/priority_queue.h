@@ -12,7 +12,6 @@ extern "C" {
 
 // A max-heap priority heap.
 typedef struct priority_queue_t {
-  int tag;
   // Element 0 is not used; holds (capacity + 1) elements.
   u8 *heap;
   size_t element_size, size, capacity;
@@ -37,7 +36,6 @@ priority_queue_init(priority_queue_t *q, size_t element_size,
                     int (*less)(void *, void *), malloc_fp_t alloc,
                     free_fp_t free) {
   xassert(q && swap && less && alloc && free);
-  q->tag = PRIORITY_QUEUE_STRUCT_TAG;
   q->element_size = element_size;
   q->size = 0;
   q->capacity = capacity;

@@ -1,12 +1,11 @@
 
 CYLS	EQU		10				; どこまで読み込むか
 
-; GLOBAL start
+; This line is essential, even for nasm
 		ORG		0x7c00			; このプログラムがどこに読み込まれるのか
 
 ; 以下は標準的なFAT12フォーマットフロッピーディスクのための記述
 
-; start:
 		JMP		entry
 		DB		0x90
 		DB		"HARIBOTE"      ; ブートセクタの名前を自由に書いてよい（8バイト）
@@ -101,9 +100,8 @@ msg:
 		DB		0
 
 ; $-$$ for nasm, $ for nask
-		RESB	0x7dfe-$		; 0x7dfeまでを0x00で埋める命令
-
-;	; Now that org is not supported on elf, we use 510 instead of 0x7dfe
-;		RESB 0x1fe - ($-$$)
+; nask recognizes org, while nasm ($-$$) from 0
+		; RESB	0x7dfe-$		; 0x7dfeまでを0x00で埋める命令
+		RESB	0x1fe-($-$$)		; 0x7dfeまでを0x00で埋める命令
 
 		DB		0x55, 0xaa

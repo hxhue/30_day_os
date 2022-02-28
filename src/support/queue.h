@@ -11,7 +11,6 @@ extern "C" {
 #include <string.h>
 
 typedef struct queue_t {
-  int tag;
   u8 *queue;
   size_t front, end, capacity, element_size;
   malloc_fp_t alloc;
@@ -30,7 +29,6 @@ static inline void queue_init(queue_t *q, size_t element_size,
                               size_t capacity, malloc_fp_t alloc,
                               free_fp_t free) {
   xassert(q && alloc && free);
-  q->tag = QUEUE_STRUCT_TAG;
   q->element_size = element_size;
   q->capacity = capacity;
   q->front = 0;

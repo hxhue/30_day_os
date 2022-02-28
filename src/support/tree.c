@@ -286,9 +286,6 @@ void tree_init(tree_t *tree, size_t element_size, void *(*alloc)(size_t),
 }
 
 static void tree_node_remove_balance(tree_t *tree, tree_node_t *x) {
-
-  // maintain red-black tree balance after deleting node x
-
   while (x != tree->root && !x->red) {
     if (x == x->parent->left) {
       tree_node_t *w = x->parent->right;

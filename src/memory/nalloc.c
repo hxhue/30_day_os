@@ -74,16 +74,3 @@ int node_alloc_reclaim(node_alloc_t *alloc, void *addr) {
   alloc->mem[i/8] |= byte;
   return 0;
 }
-
-// void node_alloc_wrap(node_alloc_t *alloc, void *memory, size_t memory_size,
-//                      size_t element_size, malloc_func_t *wrapped_malloc, 
-//                      free_func_t *wrapped_free) {
-//   alloc->element_size = element_size;
-//   alloc->real_size = memory_size;
-//   alloc->bmsz = memory_size / (1 + 8 * element_size);
-//   alloc->mem = (unsigned char *)memory;
-//   alloc->fast_count = 0;
-//   memset(alloc->mem, -1, alloc->bmsz);
-
-//   // TODO: Wrap malloc and free
-// }

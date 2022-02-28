@@ -1,3 +1,11 @@
+unsigned long long 
+__udivmoddi4 (unsigned long long a, unsigned long long b, unsigned long long *p)
+{
+  *p = a % b;
+  return a / b;
+}
+
+
 // GCC 32/64-bit integer arithmetic support for 32-bit systems that can't link
 // to libgcc.
 

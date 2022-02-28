@@ -39,7 +39,7 @@ struct layer_ctl_t {
 static layer_ctl_t layerctl;
 
 // Now we only store a pointer in tree node.
-static int layer_pointer_cmp(void *lhs, void *rhs) {
+int layer_pointer_cmp(void *lhs, void *rhs) {
   layer_t *l = *(layer_t **)lhs;
   layer_t *r = *(layer_t **)rhs;
 

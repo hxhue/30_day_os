@@ -1,14 +1,17 @@
 /* copyright(C) 2003 H.Kawai (under KL-01). */
 
-#if (!defined(STDIO_H))
+#if (!defined(STDLIB_H))
 
-#define STDIO_H	1
+#define STDLIB_H	1
 
 #if (defined(__cplusplus))
 	extern "C" {
 #endif
 
-#include <support/printf.h>
+#define RAND_MAX 32767
+
+int  rand();
+void srand(unsigned seed);
 
 #if (defined(__cplusplus))
 	}

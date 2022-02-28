@@ -19,10 +19,6 @@ typedef unsigned long long u64;
 typedef void (*free_fp_t)(void *);
 typedef void *(*malloc_fp_t)(size_t);
 
-// TODO: Remove useless tags
-#define QUEUE_STRUCT_TAG          0x10
-#define PRIORITY_QUEUE_STRUCT_TAG 0x20
-
 // Returns y in range [low, high].
 // If low > high, there is no garantee the result will be correct.
 static inline i32 clamp_i32(i32 x, i32 low, i32 high) {

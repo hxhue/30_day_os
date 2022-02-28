@@ -13,11 +13,8 @@ VRAM	    EQU  0x0ff8    ; グラフィックバッファの開始番地
 
 VBE_MODE  EQU  0x0105    ; 1024 * 768 * 8 bit
 
-; GLOBAL start
-
 		ORG		0xc200        ; このプログラムがどこに読み込まれるのか
 
-; start:
 ; 画面モードを設定
 ; Try high resolution VBE first
 		; Get VBE version
@@ -117,7 +114,7 @@ keystatus:
 ; Real mode: addr = seg_reg * 16 + offset
 ; Protected mode: addr = (GDT_start + seg_reg).base + offset
 
-[INSTRSET "i486p"]		    ; 486の命令まで使いたいという記述
+; [INSTRSET "i486p"]		    ; 486の命令まで使いたいという記述
 
 		LGDT	[GDTR0]			    ; 暫定GDTを設定
 		MOV		EAX,CR0

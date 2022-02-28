@@ -13,6 +13,7 @@
 #include "graphics/layer.h"
 #include "event/timer.h"
 #include "support/debug.h"
+#include <stdlib.h>
 
 boot_info_t g_boot_info;
 
@@ -25,7 +26,7 @@ layer_t *window_layer2;
 
 // Temporary
 static void window_random_square() {
-  draw_rect(window_layer1, xrand() % RGB_TRANSPARENT, 1, 1, 32, 32);
+  draw_rect(window_layer1, rand() % RGB_TRANSPARENT, 1, 1, 32, 32);
   emit_redraw_event(window_layer1->x + 1, window_layer1->y + 1, 
                     window_layer1->x + 32, window_layer1->y + 32);
   add_timer(20, window_random_square);
@@ -51,7 +52,7 @@ void task_b_main() {
       // count needs to be updated
       count = g_counter.count + 36;
     }
-    draw_rect(window_layer2, xrand() % 16, 0, 0, 32, 32);
+    draw_rect(window_layer2, rand() % 16, 0, 0, 32, 32);
     layers_redraw_all(window_layer2->x, window_layer2->y, window_layer2->x + 32, window_layer2->y + 32);
     asm_hlt();
   }

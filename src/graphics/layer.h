@@ -24,13 +24,14 @@ struct layer_t {
 
 void init_layer_mgr();
 
+int layer_pointer_cmp(void *lhs, void *rhs);
+
 // Allocates an invisible layer. If "buf" == null, a new buffer will be
 // allocated by the function.
 layer_t *layer_new(int width, int height, int x, int y, u8 *buf);
 
 // Set rank of the layer so it can be drawn. "rank" == 0 means invisible.
-// Larger rank means being drawn later. This function should not be presented
-// to users.
+// Larger rank means being drawn later.
 void layer_set_rank(layer_t *layer, i16 rank);
 
 // Even more unsafe than layer_set_rank.

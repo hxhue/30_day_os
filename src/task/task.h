@@ -26,15 +26,7 @@ typedef struct pid_node_t {
 	struct pid_node_t *next;
 } pid_node_t;
 
-typedef struct process_t {
-	int sel, flags;
-	pid_t pid;
-	// Linked lists with head
-	struct layer_node_t *layers;
-	struct pid_node_t *children;
-	char name[32];
-	TSS32_t tss;
-} process_t;
+typedef struct process_t process_t;
 
 #if (defined(__cplusplus))
 }

@@ -12,6 +12,7 @@
 #include <support/type.h>
 #include <support/queue.h>
 #include <support/debug.h>
+#include <stdlib.h>
 
 #define MOUSE_LAYER_RANK 128
 
@@ -53,7 +54,7 @@ void init_background() {
   sprintf(buf, "memory: %d MB, free: %d KB", max_addr / (1024 * 1024),
           free_mem / 1024);
   draw_string(layer, RGB_WHITE, 0, 80, buf);
-  sprintf(buf, "rand: %d", xrand());
+  sprintf(buf, "rand: %d", rand());
   draw_string(layer, RGB_WHITE, 0, 96, buf);
 
   layer->focusable = 0;

@@ -1,6 +1,6 @@
 
-[FORMAT "WCOFF"]                
-[INSTRSET "i486p"]              
+; [FORMAT "WCOFF"]                
+; [INSTRSET "i486p"]              
 [BITS 32]                       
 
     GLOBAL _asm_hlt,  _asm_cli,   _asm_sti, _asm_sti_hlt

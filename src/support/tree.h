@@ -38,16 +38,10 @@ int tree_remove(tree_t *tree, void *key);
 // instead. If insertion fails due to memory shortage, 0 will be returned.
 void *tree_insert(tree_t *tree, void *key);
 
-// "key" has changed, so the order needs to be fixed. "key" must be an existing
-// node in the tree, and the only one which is changed currently.
+// Updates tree structure after key is modified. key must belongs to an existing
+// node in the tree. If this function is called, addresses of internal keys are
+// likely to change. Otherwise, the addresses of keys are stable.
 void tree_update(tree_t *tree, void *key);
-
-// Same as tree_update(), except it uses an unstable update method. When 
-// elements with the same value are found, it doesn't stop swapping. It's 
-// only useful in trees that allow multiple same-valued keys coexisting.
-// It's not implemented yet, since tree_t doesn't allow same-valued keys 
-// currently.
-// void tree_update_unstable(tree_t *tree, void *key);
 
 // 3. Property queries
 
