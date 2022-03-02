@@ -42,18 +42,8 @@ void event_loop() {
 
     // No new event.
     if (queue_index < 0) {
-      // HLT after STI has a special effect: interrupts between them will stop
-      // HLT from making CPU sleep. Calling asm_sti() and asm_hlt() separately
-      // does not have this effect.
-      asm_sti_hlt();
-
-      // extern layer_t *window_layer1;
-      // char buf[64];
-      // sprintf(buf, "%08u", (unsigned)g_counter.count);
-      // draw_rect(window_layer1, RGB_WHITE, 40, 28, 120, 44);
-      // draw_string(window_layer1, RGB_BLACK, 40, 28, buf);
-      // int x = window_layer1->x, y = window_layer1->y;
-      // emit_redraw_event(x + 40, y + 28, x + 120, y + 44);
+      asm_sti();
+      process_yield();
       continue;
     }
 
@@ -62,7 +52,7 @@ void event_loop() {
   }
 }
 
-// kbdc is slow so CPU has to wait.
+// Keyboard controller is slow so CPU has to wait.
 // But kbdc was fast when I tested it in Qemu.
 static inline void wait_kbdc_ready() {
   while (asm_in8(PORT_KEYSTA) & KEYSTA_SEND_NOT_READY) {
@@ -93,8 +83,10 @@ static inline void init_counter() {
   // Notify IRQ-0 Cycle change
   asm_out8(PIT_CTRL, 0X34);
   // PIT: 1.193182 MHz
-  asm_out8(PIT_CNT0, 0x9c);
-  asm_out8(PIT_CNT0, 0x2e); // 0x2e9c -> about 10 ms
+  // 0x2e9c -> about 10 ms
+  // 0x0952 -> about 2 ms
+  asm_out8(PIT_CNT0, 0x52);
+  asm_out8(PIT_CNT0, 0x09);
 }
 
 // Initialize devices, so they can handle interrupts and emit events.

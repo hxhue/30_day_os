@@ -24,9 +24,16 @@ extern "C" {
 
 // Only the higher 13 bits of a segment register's can be used,
 // so the max possible segment count is 8192.
-#define GDT_LIMIT     0x0000ffff // 8192 * 8 - 1
-#define IDT_LIMIT     0x000007ff // 256  * 8 - 1
-#define ACC_INT_ENTRY 0x008e
+#define GDT_LIMIT      0x0000ffff // 8192 * 8 - 1
+#define IDT_LIMIT      0x000007ff // 256  * 8 - 1
+#define ACC_INT_ENTRY  0x008e
+#define FLAG_TSS32     0x0
+#define ACC_TSS32      0x89
+
+// To simplify implmentation: it holds that pid + SEL_START == sel
+#define SEL_START       3
+#define PID_MAX         (8191 - SEL_START)
+#define KERNEL_GDT_SEL  SEL_START
 
 #define KEYSTA_SEND_NOT_READY 0x02
 #define KEYCMD_WRITE_MODE     0x60

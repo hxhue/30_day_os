@@ -1,5 +1,3 @@
-/* copyright(C) 2003 H.Kawai (under KL-01). */
-
 #if (!defined(STDIO_H))
 
 #define STDIO_H	1
@@ -8,7 +6,7 @@
 	extern "C" {
 #endif
 
-#include <support/printf.h>
+#include <support/printf/printf.h>
 
 #if (defined(__cplusplus))
 	}

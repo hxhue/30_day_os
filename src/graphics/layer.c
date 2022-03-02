@@ -236,7 +236,7 @@ void layers_receive_mouse_event(int x, int y, mouse_msg_t msg) {
   // xprintf("Searching layers tree. Size: %d\n", tree_size(&layerctl.layers));
 
   for (void *key = tree_largest_key(&layerctl.layers); key; 
-      key = tree_last_key(&layerctl.layers, key)) {
+      key = tree_prev_key(&layerctl.layers, key)) {
     layer_t *layer = *(layer_t **)key;
 
     // Skip mouse layer itself.

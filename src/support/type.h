@@ -81,7 +81,7 @@ static inline void swap64(void *x, void *y) {
   *Y = t;
 }
 
-// Swap for pointers
+// swap() for pointers
 static inline void swapptr(void *x, void *y) {
   void **X = (void **)x, **Y = (void **)y;
   void *t = *X;

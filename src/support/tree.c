@@ -258,7 +258,7 @@ void *tree_next_key(const tree_t *tree, void *key) {
 }
 
 // Requirement(s): "key" should be a node in "tree".
-void *tree_last_key(const tree_t *tree, void *key) {
+void *tree_prev_key(const tree_t *tree, void *key) {
   tree_node_t *node = tree_node_from_key(key);
   tree_node_t *nil = tree->nil;
   if (node->left != nil)
@@ -440,10 +440,10 @@ void tree_update(tree_t *tree, void *key) {
     key = next;
     next = tree_next_key(tree, next);
   }
-  void *last = tree_last_key(tree, key);
+  void *last = tree_prev_key(tree, key);
   while (last && tree->cmp(key, last) < 0) {
     swap_key(tree, key, last);
     key = last;
-    last = tree_last_key(tree, last);
+    last = tree_prev_key(tree, last);
   }
 }

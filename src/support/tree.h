@@ -56,7 +56,7 @@ void *tree_find(const tree_t *tree, void *key);
 void *tree_smallest_key(const tree_t *tree);
 void *tree_largest_key(const tree_t *tree);
 void *tree_next_key(const tree_t *tree, void *key);
-void *tree_last_key(const tree_t *tree, void *key);
+void *tree_prev_key(const tree_t *tree, void *key);
 
 #if (defined(__cplusplus))
 }

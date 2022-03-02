@@ -1,5 +1,3 @@
-/* copyright(C) 2003 H.Kawai (under KL-01). */
-
 #if (!defined(STDLIB_H))
 
 #define STDLIB_H	1

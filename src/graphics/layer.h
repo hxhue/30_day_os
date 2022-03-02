@@ -34,7 +34,7 @@ layer_t *layer_new(int width, int height, int x, int y, u8 *buf);
 // Larger rank means being drawn later.
 void layer_set_rank(layer_t *layer, i16 rank);
 
-// Even more unsafe than layer_set_rank.
+// Even unsafer than layer_set_rank.
 void layer_set_rank_no_bound(layer_t *layer, i16 rank);
 
 // Set the max rank possible for given layer.
