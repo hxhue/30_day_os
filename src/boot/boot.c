@@ -29,12 +29,6 @@ static void window_random_square() {
   add_timer(20, window_random_square);
 }
 
-// static void switch_to_task_b() {
-//   xprintf("[switch_to_task_b]\n");
-//   asm_farjmp(0, 4 * 8);
-//   add_timer(100, switch_to_task_b);
-// }
-
 void task_b_main() {
   window_layer2 = make_window(160, 52, "Inputbox2");
   layer_move_to(window_layer2, 260, 130);
@@ -44,7 +38,8 @@ void task_b_main() {
     draw_rect(window_layer2, rand() % 16, 0, 0, 32, 32);
     layers_redraw_all(window_layer2->x, window_layer2->y, window_layer2->x + 32,
                       window_layer2->y + 32);
-    process_yield();
+    // process_yield();
+    asm_hlt();
   }
 }
 

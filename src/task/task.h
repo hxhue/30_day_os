@@ -37,7 +37,8 @@ enum ProcessFlags {
 };
 
 struct process_t {
-	int sel, flags, state;
+	int sel, state;
+	unsigned flags;
 	// Schedule-related data.
 	int priority, tsmax, tsnow; 
 	pid_t pid;
@@ -55,16 +56,20 @@ list_node_t *process_start(process_t *proc);
 
 process_t *process_new(int priority, const char *name);
 
-void process_enqueue(list_node_t *pnode);
-
 // Voluntarily give up time slices.
 void process_yield();
 
-// Returns selector of next process. If process switch will not happen, -1 is 
-// returned.
-int process_count_time_slice();
+// May trigger process switch when current process runs out of time slices.
+void process_count_time_slice();
 
-extern process_node_t *current_process;
+extern process_node_t *kernel_proc_node;
+extern process_node_t *current_proc_node;
+
+// Process "proc" has received some urgent task, and needs it to be done as soon
+// as possible. This process will be moved into a high priority queue
+// immediately, but given limited time slices. When work is done, the original
+// time slice count is restored instead of being reset.
+void process_promote(process_node_t *pnode);
 
 #if (defined(__cplusplus))
 }

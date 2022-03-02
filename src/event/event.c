@@ -30,7 +30,6 @@ void prepare_event_loop() {
 void event_loop() {
   for (;;) {
     asm_cli();
-
     // Search for a non-empty queue.
     int queue_index = -1, i;
     for (i = 0; i < sizeof(event_queues) / sizeof(event_queues[0]); ++i) {
@@ -39,14 +38,12 @@ void event_loop() {
         break;
       }
     }
-
     // No new event.
     if (queue_index < 0) {
       asm_sti();
-      process_yield();
+      // process_yield();
       continue;
     }
-
     // asm_sti() is called inside the consume() function.
     event_queues[queue_index]->consume();
   }
@@ -85,8 +82,10 @@ static inline void init_counter() {
   // PIT: 1.193182 MHz
   // 0x2e9c -> about 10 ms
   // 0x0952 -> about 2 ms
-  asm_out8(PIT_CNT0, 0x52);
-  asm_out8(PIT_CNT0, 0x09);
+  // asm_out8(PIT_CNT0, 0x52);
+  // asm_out8(PIT_CNT0, 0x09);
+  asm_out8(PIT_CNT0, 0x9c);
+  asm_out8(PIT_CNT0, 0x2e);
 }
 
 // Initialize devices, so they can handle interrupts and emit events.

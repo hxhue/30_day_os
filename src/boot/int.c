@@ -60,16 +60,7 @@ void init_pic() {
 void int_handler0x20(u32 esp) {
   asm_out8(PIC0_OCW2, 0x60 + 0x0); /* Accept interrupt 0x0 */
   ++g_counter.count;
-  
-  int sel = process_count_time_slice();
-
-  // xprintf("[before farjmp] ");
-  if (sel >= 0) {
-    // xprintf("sel: %d\n", sel);
-    asm_farjmp(0, sel * 8);
-  } else {
-    // xprintf("won't jump: sel < 0\n");
-  }
+  process_count_time_slice();
 }
 
 /* PS/2 keyboard, 0x20 + 1 (kbd) = 0x21. esp is the 32-bit stack register. */
@@ -107,6 +98,7 @@ void int_handler0x2c(u32 esp) {
       msg.buf[2] = data;
       mouse_state = 0;
       emit_mouse_event(msg);
+      process_promote(kernel_proc_node);
       break;
     case 3:
       if (data == 0xfa)

@@ -18,6 +18,9 @@
 #include <boot/def.h>
 
 #define SCHEDULER_QUEUE_NUM     3
+#define SCHEDULER_QUEUE_URGENT  0
+#define SCHEDULER_QUEUE_NEW     1
+#define SCHEDULER_QUEUE_OLD     2
 #define SCHEDULER_QUEUE_SIZE 1024
 
 typedef struct task_mgr_t {
@@ -37,8 +40,12 @@ int pid_cmp(void *a, void *b) {
   return *(pid_t *)a - *(pid_t *)b;
 }
 
-process_node_t *current_process;
-process_node_t *kernel_process;
+process_node_t *current_proc_node;
+process_node_t *kernel_proc_node;
+
+process_t *get_proc_from_node(process_node_t *node) {
+  return *(process_t **)list_get_value(node);
+}
 
 void init_task_mgr() {
   tree_init(&g_task_mgr.process_tree, sizeof(process_t), alloc_mem2, 
@@ -56,7 +63,8 @@ void init_task_mgr() {
   p->state = PROCSTATE_RUNNING;
   // Since queues share the same malloc() and free() functions, we can use any
   // of them of make the kernel node.
-  kernel_process = current_process = list_make_node(&g_task_mgr.queues[0], &p); 
+  kernel_proc_node = list_make_node(&g_task_mgr.queues[0], &p); 
+  current_proc_node = kernel_proc_node;
   asm_load_tr(p->sel * 8);
 }
 
@@ -86,7 +94,8 @@ process_t *process_new(int priority, const char *name) {
   strncpy(p->name, name, sizeof(p->name) - 1);
   p->name[sizeof(p->name) - 1] = '\0';
   p->flags = 0;
-  p->priority = 0; // The first queue
+  // 0: Urgent, 1: New, 2: Old
+  p->priority = SCHEDULER_QUEUE_NEW;
   p->state = PROCSTATE_READY;
   tree_init(&p->layers, sizeof(void *), alloc_mem2, reclaim_mem2, 
             layer_pointer_cmp);
@@ -115,71 +124,102 @@ list_node_t *process_start(process_t *proc) {
 //static int kernel_task_delay = 1;
 
 void process_enqueue(list_node_t *pnode) {
-  process_t *proc = *(process_t **)list_get_value(pnode);
+  process_t *proc = get_proc_from_node(pnode);
   list_t *list = &g_task_mgr.queues[proc->priority];
   list_push_back(list, pnode);
 }
 
+// Only increment the priority (make it less prior) of the next process. Current
+// process is unmodified. (So any modifications on current process should be
+// done before calling process_switch().)
+// Returns 1 when process switch happens, 0 when it does not.
 static int process_switch() {
   // xprintf("%s\n", __func__);
-
   process_t *p = NULL;
-
   for (int i = 0; i < SCHEDULER_QUEUE_NUM; ++i) {
     list_t *list = &g_task_mgr.queues[i];
     if (list_size(list) > 0) {
-      // queue_pop(q, &p);
       list_node_t *node = list_pop_front(list);
-      p = *(process_t **)list_get_value(node);
-      if (p->priority + 1 < SCHEDULER_QUEUE_NUM)
+      p = get_proc_from_node(node);
+      if (p->priority + 1 < SCHEDULER_QUEUE_NUM) {
         p->priority++;
-      process_enqueue(current_process);
-      current_process = node;
+      }
+      p->state = PROCSTATE_RUNNING;
+
+      process_t *curp = get_proc_from_node(current_proc_node);
+      curp->state = PROCSTATE_READY;
+      process_enqueue(current_proc_node);
+      
+      current_proc_node = node;
       break;
     }
   }
-
-  return p ? p->sel : -1;
+  if (p) {
+    asm_farjmp(0, p->sel * 8);
+    return 1;
+  }
+  return 0;
 }
 
-int process_count_time_slice() {
-  process_t *p = *(process_t **)list_get_value(current_process);
+void process_count_time_slice() {
+  process_t *p = get_proc_from_node(current_proc_node);
   // xprintf("%s\n", __func__);
-  if (--p->tsnow <= 0) {
+  if (p->flags & PROCFLAG_URGENT) {
+    p->flags &= ~(PROCFLAG_URGENT);
+    process_switch();
+  } else if (--p->tsnow <= 0) {
     p->tsnow = p->tsmax;
-    return process_switch();
+    process_switch();
   }
-  return -1;
 }
 
 // Voluntarily give up time slices immediately.
 static inline void process_yield_immediate() {
-  process_t *p = *(process_t **)list_get_value(current_process);
+  process_t *p = get_proc_from_node(current_proc_node);
   p->tsnow = p->tsmax;
-  int sel = process_switch();
-  if (sel < 0) {
+  if (!process_switch()) {
     asm_hlt();
-  } else {
-    asm_farjmp(0, sel * 8);
   }
 }
 
 // Voluntarily give up time slices. Process switch will happen at the next timer
 // interrupt.
 static inline void process_yield_aligned() {
-  process_t *p = *(process_t **)list_get_value(current_process);
+  process_t *p = get_proc_from_node(current_proc_node);
   p->tsnow = 0;
   asm_hlt();
 }
 
 void process_yield() {
   process_yield_immediate();
+  // process_yield_aligned();
 }
 
-// Process "proc" has received some urgent task, and needs it to be done as soon
-// as possible. This process will be moved into a high priority queue
-// immediately, but given limited time slices. When work is done, the original
-// time slice count is restored instead of being reset.
-void process_promote(process_t *proc) {
-  //
+void process_promote(process_node_t *pnode) {
+  process_t *proc = get_proc_from_node(pnode);
+
+  // xprintf("pnode: state: %d, urgent: %d. ", proc->state,
+  //         (proc->flags & PROCFLAG_URGENT));
+
+  if (proc->state == PROCSTATE_READY && !(proc->flags & PROCFLAG_URGENT)) {
+    xassert(pnode != current_proc_node);
+    proc->flags |= PROCFLAG_URGENT;
+    list_t *list = &g_task_mgr.queues[proc->priority];
+    list_unlink(list, pnode);
+    list_t *urgent_list = &g_task_mgr.queues[SCHEDULER_QUEUE_URGENT];
+    list_push_back(urgent_list, pnode);
+    // Check if current task is an urgent task. If not, interrupt it.
+    process_t *current_proc = get_proc_from_node(current_proc_node);
+    if (!(current_proc->flags & PROCFLAG_URGENT)) {
+      if (process_switch()) {
+        // xprintf("Deprived\n");
+      } else {
+        xprintf("No need to deprive\n");
+      }
+    } else {
+      xprintf("Cannot deprive\n");
+    }
+  } else {
+    // xprintf("Aleady urgent\n");
+  }
 }
