@@ -12,6 +12,7 @@
 #include <string.h>
 #include <task/task.h>
 #include <boot/def.h>
+#include <task/task.h>
 
 typedef struct gate_descriptor_t {
   u16 offset_low, selector;
@@ -99,6 +100,7 @@ void int_handler0x2c(u32 esp) {
       mouse_state = 0;
       emit_mouse_event(msg);
       process_set_urgent(kernel_proc_node);
+      process_try_preempt();
       break;
     case 3:
       if (data == 0xfa)

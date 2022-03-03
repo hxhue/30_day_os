@@ -34,11 +34,19 @@ void task_b_main() {
   layer_move_to(window_layer2, 260, 130);
   draw_textbox(window_layer2, 8, 28, 144, 16, RGB_WHITE);
   layer_bring_to_front(window_layer2);
+
+  // Register mouse IRQ
+  process_register_irq(current_proc_node, IRQNO_MOUSE);
+
   for (;;) {
     draw_rect(window_layer2, rand() % 16, 0, 0, 32, 32);
     layers_redraw_all(window_layer2->x, window_layer2->y, window_layer2->x + 32,
                       window_layer2->y + 32);
-    // process_yield();
+    process_t *proc = get_proc_from_node(current_proc_node);
+    if (proc->irq & IRQBIT_MOUSE) {
+      xprintf("Task b receives a mouse event!\n");
+      proc->irq &= ~IRQBIT_MOUSE;
+    }
     asm_hlt();
   }
 }
@@ -48,6 +56,7 @@ void startup(void) {
   init_gdt();
   init_interrupt();
   init_mem_mgr();
+  init_task_mgr();
 
   // Initialize event loop data, e.g. event queue.
   prepare_event_loop();
@@ -61,8 +70,6 @@ void startup(void) {
 
   // Set color and cursor; draw a background.
   init_display();
-
-  init_task_mgr();
 
   window_layer1 = make_window(160, 52, "Inputbox");
   layer_move_to(window_layer1, 160, 100);

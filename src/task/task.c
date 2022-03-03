@@ -2,6 +2,7 @@
 #include "task/task.h"
 #include "boot/def.h"
 #include "boot/gdt.h"
+#include "event/event.h"
 #include "graphics/layer.h"
 #include "memory/memory.h"
 #include "support/queue.h"
@@ -132,7 +133,7 @@ void process_enqueue(list_node_t *pnode) {
 // process is unmodified. (So any modifications on current process should be
 // done before calling process_switch().)
 // Returns 1 when process switch happens, 0 when it does not.
-static int process_switch() {
+int process_switch() {
   // xprintf("%s\n", __func__);
   process_t *p = NULL;
   for (int i = 0; i < SCHEDULER_QUEUE_NUM; ++i) {
@@ -158,6 +159,14 @@ static int process_switch() {
     return 1;
   }
   return 0;
+}
+
+void process_try_preempt() {
+  // Check if current task is an urgent task. If not, interrupt it.
+  process_t *current_proc = get_proc_from_node(current_proc_node);
+  if (!(current_proc->flags & PROCFLAG_URGENT)) {
+    process_switch();
+  }
 }
 
 void process_count_time_slice() {
@@ -194,7 +203,7 @@ void process_yield() {
   // process_yield_aligned();
 }
 
-void process_set_urgent(process_node_t *pnode) {
+int process_set_urgent(process_node_t *pnode) {
   process_t *proc = get_proc_from_node(pnode);
 
   // xprintf("pnode: state: %d, urgent: %d. ", proc->state,
@@ -207,32 +216,31 @@ void process_set_urgent(process_node_t *pnode) {
     list_unlink(list, pnode);
     list_t *urgent_list = &g_task_mgr.queues[SCHEDULER_QUEUE_URGENT];
     list_push_back(urgent_list, pnode);
-    // Check if current task is an urgent task. If not, interrupt it.
-    process_t *current_proc = get_proc_from_node(current_proc_node);
-    if (!(current_proc->flags & PROCFLAG_URGENT)) {
-      if (process_switch()) {
-        // xprintf("Deprived\n");
-      } else {
-        xprintf("No need to deprive\n");
-      }
-    } else {
-      xprintf("Cannot deprive\n");
-    }
-  } else {
-    // xprintf("Aleady urgent\n");
+    return 1;
   }
+  return 0;
 }
 
-void process_register_irq(process_node_t *pnode, int irq) {
-  if (irq < 0 || irq >= 16) {
+void process_register_irq(process_node_t *pnode, int irqno) {
+  if (irqno < 0 || irqno >= 16) {
     return;
   }
-
   process_t *proc = get_proc_from_node(pnode);
-  u16 bit = 1 << irq;
+  u16 bit = 1 << irqno;
   if (bit & proc->irqmask) { // Already registered.
     return;
   }
   proc->irqmask |= bit;
-  // TODO: Put it into the notification set.
+}
+
+void process_unregister_irq(process_node_t *pnode, int irqno) {
+  if (irqno < 0 || irqno >= 16) {
+    return;
+  }
+  process_t *proc = get_proc_from_node(pnode);
+  u16 bit = 1 << irqno;
+  if (!(bit & proc->irqmask)) { // Not registered.
+    return;
+  }
+  proc->irqmask &= ~bit;
 }

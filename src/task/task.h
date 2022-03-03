@@ -6,7 +6,7 @@ extern "C" {
 #endif
 
 #include <support/tree.h>
-#include "support/list.h"
+#include <support/list.h>
 
 typedef struct TSS32_t {
 	int backlink, esp0, ss0, esp1, ss1, esp2, ss2, cr3;
@@ -36,10 +36,16 @@ enum ProcessFlags {
 	PROCFLAG_URGENT = 0x01, // Related to state "ready".
 };
 
+enum IRQNO {
+	IRQNO_TIMER    = 0,
+	IRQNO_KEYBOARD = 1,
+	IRQNO_MOUSE    = 12,
+};
+
 enum IRQBit {
-	IRQBIT_TIMER    = 0x1,    // 0
-	IRQBIT_KEYBOARD = 0x2,    // 1
-	IRQBIT_MOUSE    = 0x1000, // 12
+	IRQBIT_TIMER    = (1 << 0),
+	IRQBIT_KEYBOARD = (1 << 1),
+	IRQBIT_MOUSE    = (1 << 12),
 };
 
 struct process_t {
@@ -62,16 +68,32 @@ extern process_node_t *current_proc_node;
 void init_task_mgr();
 
 process_node_t *process_start(process_t *proc);
-process_t      *process_new(int priority, const char *name);
+process_t *process_new(int priority, const char *name);
 void process_yield();            // Voluntarily give up time slices.
 void process_count_time_slice(); // May trigger process switch when current
                                  // process runs out of time slices.
+
 // Process "proc" has received some urgent task, and needs it to be done as soon
 // as possible. This process will be moved into a high priority queue
 // immediately, but given limited time slices. When work is done, the original
-// time slice count is restored instead of being reset.
-void process_set_urgent(process_node_t *pnode);
-void process_register_irq(process_node_t *pnode, int irq);
+// time slice count is restored instead of being reset. This function only
+// adjust the queue the process is in, so process switch won't happen
+// immediately. Returns 1 on success, 0 on failure.
+int process_set_urgent(process_node_t *pnode);
+
+process_t *get_proc_from_node(process_node_t *node);
+
+// When kernel dicides to send irq-related data to a process, it checks if the
+// process wants the data. If so, the data is tranfered, and the process is
+// updated with a higher priority (smaller priority field value). For a certain
+// irq packet, not every process which has registered IRQs will receive it.
+// TODO: This may be merged into signals.
+void process_register_irq(process_node_t *pnode, int irqno);
+void process_unregister_irq(process_node_t *pnode, int irqno);
+
+int  process_switch();
+void process_try_preempt(); // Calls process_switch() when current process is
+                            // not urgent.
 
 #if (defined(__cplusplus))
 }

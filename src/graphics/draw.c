@@ -1,5 +1,7 @@
 #include "graphics/draw.h"
 #include "graphics/layer.h"
+#include "support/debug.h"
+#include "task/task.h"
 #include <boot/boot.h>
 #include <event/event.h>
 #include <event/timer.h>
@@ -27,7 +29,7 @@ void init_background() {
   int w = g_boot_info.width;
   int h = g_boot_info.height;
 
-  layer_t *layer = layer_new(w, h, 0, 0, (u8 *)0);
+  layer_t *layer = layer_new(kernel_proc_node, w, h, 0, 0, (u8 *)0);
   xassert(layer);
 
   draw_rect(layer, RGB_AQUA_DARK, 0,      0,          w,  h - 28);
@@ -101,8 +103,9 @@ void init_close_btn_image() {
 // sublayer cannot be found in layer tree, but drawing system are aware of them.
 
 // TODO: only pass content width and height to create a window
+// Make a window out of current process.
 layer_t *make_window(int width, int height, const char *title) {
-  layer_t *layer = layer_new(width, height, 0, 0, 0);
+  layer_t *layer = layer_new(current_proc_node, width, height, 0, 0, 0);
   
   if (!layer || !layer->buf)
     return (layer_t *)0; // Failure
@@ -234,8 +237,9 @@ void init_images() {
 }
 
 void init_cursor() {
-  g_mouse_layer = layer_new(CURSOR_WIDTH, CURSOR_HEIGHT, g_boot_info.width / 2,
-                            g_boot_info.height / 2, &cursor_image[0][0]);
+  g_mouse_layer = layer_new(kernel_proc_node, CURSOR_WIDTH, CURSOR_HEIGHT,
+                            g_boot_info.width / 2, g_boot_info.height / 2,
+                            &cursor_image[0][0]);
   xassert(g_mouse_layer);
   layer_set_rank_no_bound(g_mouse_layer, MOUSE_LAYER_RANK);
 }
@@ -317,12 +321,9 @@ void draw_image(layer_t *layer, const u8 *rect, int width, int height, int x, in
   }
 }
 
+// x1 > x0, y1 > y0
 static inline void handle_event_redraw(const region_t *region) {
-  if (region->x0 >= region->x1 || region->y0 >= region->y1) {
-    layers_redraw_all(0, 0, g_boot_info.width, g_boot_info.height);
-  } else {
-    layers_redraw_all(region->x0, region->y0, region->x1, region->y1);
-  }
+  layers_redraw_all(region->x0, region->y0, region->x1, region->y1);
 }
 
 void init_display() {
@@ -334,6 +335,7 @@ void init_display() {
 }
 
 static queue_t redraw_msg_queue;
+static int drawing_size = 0;
 
 #define REDRAW_MSG_QUEUE_SIZE 128
 
@@ -345,14 +347,30 @@ void init_redraw_event_queue() {
 }
 
 void emit_redraw_event(int x0, int y0, int x1, int y1) {
+  if (x0 >= x1 || y0 >= y1) {
+    xprintf("emit_redraw_event(): Illegal region area. Rejected.");
+    return;
+  }
   region_t region = {x0, y0, x1, y1};
-  if (queue_push(&redraw_msg_queue, &region) < 0) {
-    // If queue is full, combine all messages to a single one.
+  int flag = 0;
+  int status = queue_push(&redraw_msg_queue, &region);
+  if (status < 0) {
+    flag = 1;
+    xprintf("Warning: queue_push() on redraw queue failed. Merging redrawing "
+            "requests\n");
+  } else {
+    drawing_size += (x1 - x0) * (y1 - y0);
+    if (drawing_size > g_boot_info.width * g_boot_info.height) {
+      flag = 1;
+      // xprintf(
+      //     "Warning: Redrawing task is too heavy. Merging redrawing requests\n");
+    }
+  }
+  if (flag) {
     queue_clear(&redraw_msg_queue);
     region_t full_region = {0, 0, g_boot_info.width, g_boot_info.height};
     queue_push(&redraw_msg_queue, &full_region);
-    xprintf("Warning: queue_push() on redraw queue failed. Merging redrawing "
-            "requests\n");
+    drawing_size = g_boot_info.width * g_boot_info.height;
   }
 }
 
@@ -364,6 +382,8 @@ void redraw_event_queue_consume() {
   region_t region;
   queue_pop(&redraw_msg_queue, &region);
   asm_sti();
+  drawing_size -= (region.x1 - region.x0) * (region.y1 - region.y0);
+  xassert(drawing_size >= 0);
   handle_event_redraw(&region);
 }
 

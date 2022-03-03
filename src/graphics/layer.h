@@ -7,6 +7,7 @@
 
 #include <support/type.h>
 #include <event/mouse.h>
+#include <task/task.h>
 
 typedef struct layer_t layer_t;
 
@@ -17,6 +18,7 @@ struct layer_t {
   i16 rank;             // "rank" == 0 means invisible,
                         // because background's rank is 1
   u8 *buf;
+  process_node_t *proc_node;
   u64 last_active_time; // Last time the layer is active
 };
 
@@ -28,7 +30,8 @@ int layer_pointer_cmp(void *lhs, void *rhs);
 
 // Allocates an invisible layer. If "buf" == null, a new buffer will be
 // allocated by the function.
-layer_t *layer_new(int width, int height, int x, int y, u8 *buf);
+layer_t *layer_new(process_node_t *pnode, int width, int height, int x, int y,
+                   u8 *buffer);
 
 // Set rank of the layer so it can be drawn. "rank" == 0 means invisible.
 // Larger rank means being drawn later.

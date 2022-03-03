@@ -4,6 +4,7 @@
 #include "support/tree.h"
 #include "graphics/layer.h"
 #include "support/debug.h"
+#include "task/task.h"
 #include <boot/boot.h>
 #include <event/event.h>
 #include <graphics/layer.h>
@@ -85,7 +86,8 @@ void init_layer_mgr() {
   node_alloc_init(&layerctl.layer_info_alloc, mem, sz, sizeof(layer_t));
 }
 
-layer_t *layer_new(int width, int height, int x, int y, u8 *buffer) {
+layer_t *layer_new(process_node_t *pnode, int width, int height, int x, int y,
+                   u8 *buffer) {
   xassert(width > 0 && height > 0);
 
   u8 *buf = (u8 *)0;
@@ -116,6 +118,7 @@ layer_t *layer_new(int width, int height, int x, int y, u8 *buffer) {
       .y = y,
       .rank = 0, // Layers are invisible initially.
       .buf = buffer,
+      .proc_node = pnode,
       .last_active_time = 0
     };
 
@@ -128,6 +131,9 @@ layer_t *layer_new(int width, int height, int x, int y, u8 *buffer) {
     if (buf)   reclaim_mem_4k(buf, width * height);
     if (layer) node_alloc_reclaim(&layerctl.layer_info_alloc, layer);
   }
+
+  process_t *proc = get_proc_from_node(pnode);
+  tree_insert(&proc->layers, &layer);
 
   return layer;
 }
@@ -258,9 +264,12 @@ void layers_receive_mouse_event(int x, int y, mouse_msg_t msg) {
         layer_bring_to_front(receiver);
         // TODO: notify the layer who loses focus
       }
-      // xprintf("Layer #%p is clicked by mouse\n", layer);
     }
-    // TODO: send mouse event to process of the layer if its irq bit is set.
+    process_t *proc = get_proc_from_node(receiver->proc_node);
+    if (proc->irqmask & IRQBIT_MOUSE) {
+      proc->irq |= IRQBIT_MOUSE;
+      // TODO: send mouse event to process of the layer if its irq bit is set.
+    }
   }
 
   last_mouse_msg = msg;

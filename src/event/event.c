@@ -1,4 +1,6 @@
 #include "graphics/draw.h"
+#include "memory/memory.h"
+#include "support/tree.h"
 #include <memory/memory.h>
 #include <boot/boot.h>
 #include <boot/def.h>
@@ -8,6 +10,7 @@
 #include <event/mouse.h>
 #include <graphics/draw.h>
 #include <graphics/layer.h>
+#include <stddef.h>
 #include <stdio.h>
 #include <support/asm.h>
 #include <support/type.h>
@@ -41,7 +44,7 @@ void event_loop() {
     // No new event.
     if (queue_index < 0) {
       asm_sti();
-      // process_yield();
+      process_yield();
       continue;
     }
     // asm_sti() is called inside the consume() function.
@@ -57,4 +60,3 @@ void init_devices() {
   init_keyboard();
   init_mouse();
 }
-

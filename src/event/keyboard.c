@@ -1,16 +1,15 @@
+#include "event/event.h"
 #include "memory/memory.h"
+#include "support/debug.h"
+#include "support/list.h"
+#include "support/tree.h"
+#include "task/task.h"
 #include <graphics/draw.h>
 #include <event/keyboard.h>
 #include <stdio.h>
 #include <support/asm.h>
 #include <support/queue.h>
 #include <boot/def.h>
-
-// static keyboard_listener_queue;
-
-void add_keyboard_listener(keyboard_listener_t listener) {
-
-}
 
 // 0 means the keycode is reserved or not used.
 // Based on English keyboard.
@@ -24,10 +23,7 @@ const char g_keycode_table[0x54] = {
 };
 
 void handle_event_keyboard_impl(unsigned keycode) {
-  // char buf[8];
-  // sprintf(buf, "0X%02X", keycode);
-  // fill_rect(RGB_AQUA_DARK, 0, 0, 320, 16);
-  // put_string(RGB_WHITE, 0, 0, buf);
+  // TODO: transfer data to process of focused window
 }
 
 static queue_t keyboard_msg_queue;
