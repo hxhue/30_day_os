@@ -6,6 +6,17 @@
 
 counter_t g_counter = {.count = 0};
 
+void init_counter() {
+  // Notify IRQ-0 Cycle change
+  asm_out8(PIT_CTRL, 0X34);
+  // PIT: 1.193182 MHz.
+  // 0x2e9c -> about 10 ms, 0x0952 -> about 2 ms.
+  asm_out8(PIT_CNT0, 0x52);
+  asm_out8(PIT_CNT0, 0x09);
+  // asm_out8(PIT_CNT0, 0x9c);
+  // asm_out8(PIT_CNT0, 0x2e);
+}
+
 typedef struct timer_t {
   unsigned long long timeout;
   void (*callback)(void);

@@ -98,7 +98,7 @@ void int_handler0x2c(u32 esp) {
       msg.buf[2] = data;
       mouse_state = 0;
       emit_mouse_event(msg);
-      process_promote(kernel_proc_node);
+      process_set_urgent(kernel_proc_node);
       break;
     case 3:
       if (data == 0xfa)

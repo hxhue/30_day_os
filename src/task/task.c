@@ -90,11 +90,13 @@ process_t *process_new(int priority, const char *name) {
   }
   
   // The following operations will not change rank of the tree node.
-  p->tsnow = p->tsmax = clamp_i32(priority, 0, 9) * 4 + 2;
+  p->tsnow = p->tsmax = clamp_i32(priority, 0, 9) * 5 + 2;
   strncpy(p->name, name, sizeof(p->name) - 1);
   p->name[sizeof(p->name) - 1] = '\0';
   p->flags = 0;
-  // 0: Urgent, 1: New, 2: Old
+  p->irqmask = 0;
+  p->irq = 0;
+  // Priority: 0: Urgent, 1: New, 2: Old.
   p->priority = SCHEDULER_QUEUE_NEW;
   p->state = PROCSTATE_READY;
   tree_init(&p->layers, sizeof(void *), alloc_mem2, reclaim_mem2, 
@@ -119,9 +121,6 @@ list_node_t *process_start(process_t *proc) {
   list_node_t *node = list_make_node(list, &proc);
   return list_push_back(list, node);
 }
-
-// #define KERNEL_TASK_MAX_DELAY 10
-//static int kernel_task_delay = 1;
 
 void process_enqueue(list_node_t *pnode) {
   process_t *proc = get_proc_from_node(pnode);
@@ -195,7 +194,7 @@ void process_yield() {
   // process_yield_aligned();
 }
 
-void process_promote(process_node_t *pnode) {
+void process_set_urgent(process_node_t *pnode) {
   process_t *proc = get_proc_from_node(pnode);
 
   // xprintf("pnode: state: %d, urgent: %d. ", proc->state,
@@ -222,4 +221,18 @@ void process_promote(process_node_t *pnode) {
   } else {
     // xprintf("Aleady urgent\n");
   }
+}
+
+void process_register_irq(process_node_t *pnode, int irq) {
+  if (irq < 0 || irq >= 16) {
+    return;
+  }
+
+  process_t *proc = get_proc_from_node(pnode);
+  u16 bit = 1 << irq;
+  if (bit & proc->irqmask) { // Already registered.
+    return;
+  }
+  proc->irqmask |= bit;
+  // TODO: Put it into the notification set.
 }

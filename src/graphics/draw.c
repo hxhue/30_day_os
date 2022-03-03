@@ -97,8 +97,6 @@ void init_close_btn_image() {
   }
 }
 
-// TODO: key listener
-
 // TODO: sublayer
 // sublayer cannot be found in layer tree, but drawing system are aware of them.
 
@@ -337,7 +335,7 @@ void init_display() {
 
 static queue_t redraw_msg_queue;
 
-#define REDRAW_MSG_QUEUE_SIZE 6
+#define REDRAW_MSG_QUEUE_SIZE 128
 
 // Size of redraw_msg_queue is small, since it is designed to overflow easily so
 // we can know when we should combine redrawing events.
@@ -348,11 +346,13 @@ void init_redraw_event_queue() {
 
 void emit_redraw_event(int x0, int y0, int x1, int y1) {
   region_t region = {x0, y0, x1, y1};
-  if (queue_push_no_warning(&redraw_msg_queue, &region) < 0) {
+  if (queue_push(&redraw_msg_queue, &region) < 0) {
     // If queue is full, combine all messages to a single one.
     queue_clear(&redraw_msg_queue);
     region_t full_region = {0, 0, g_boot_info.width, g_boot_info.height};
     queue_push(&redraw_msg_queue, &full_region);
+    xprintf("Warning: queue_push() on redraw queue failed. Merging redrawing "
+            "requests\n");
   }
 }
 

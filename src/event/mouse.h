@@ -17,6 +17,7 @@ extern event_queue_t g_mouse_event_queue;
 // void handle_event_mouse(unsigned data);
 void emit_mouse_event(mouse_msg_t msg);
 void init_mouse_event_queue();
+void init_mouse();
 
 #if (defined(__cplusplus))
 }

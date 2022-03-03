@@ -16,6 +16,7 @@ extern event_queue_t g_timer_event_queue;
 
 void init_timer_event_queue();
 void add_timer(unsigned long long interval, void (*callback)(void));
+void init_counter();
 
 #if (defined(__cplusplus))
 }

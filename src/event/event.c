@@ -49,45 +49,6 @@ void event_loop() {
   }
 }
 
-// Keyboard controller is slow so CPU has to wait.
-// But kbdc was fast when I tested it in Qemu.
-static inline void wait_kbdc_ready() {
-  while (asm_in8(PORT_KEYSTA) & KEYSTA_SEND_NOT_READY) {
-    // Continue
-  }
-}
-
-static inline void init_keyboard() {
-  wait_kbdc_ready();
-  // Send command: set mode (0x60).
-  asm_out8(PORT_KEYCMD, KEYCMD_WRITE_MODE);
-  wait_kbdc_ready();
-  // Send data: a mode that can use mouse (0x47).
-  // Mouse communicates through keyboard control circuit.
-  asm_out8(PORT_KEYDAT, KBC_MODE);
-}
-
-static inline void init_mouse() {
-  wait_kbdc_ready();
-  // Send command: transfer data to mouse
-  asm_out8(PORT_KEYCMD, KEYCMD_SENDTO_MOUSE);
-  wait_kbdc_ready();
-  // Send data: tell mouse to start working
-  asm_out8(PORT_KEYDAT, MOUSECMD_ENABLE);
-}
-
-static inline void init_counter() {
-  // Notify IRQ-0 Cycle change
-  asm_out8(PIT_CTRL, 0X34);
-  // PIT: 1.193182 MHz
-  // 0x2e9c -> about 10 ms
-  // 0x0952 -> about 2 ms
-  // asm_out8(PIT_CNT0, 0x52);
-  // asm_out8(PIT_CNT0, 0x09);
-  asm_out8(PIT_CNT0, 0x9c);
-  asm_out8(PIT_CNT0, 0x2e);
-}
-
 // Initialize devices, so they can handle interrupts and emit events.
 void init_devices() {
   init_counter();

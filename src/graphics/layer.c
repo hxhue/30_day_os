@@ -179,22 +179,6 @@ void layer_move_to(layer_t *layer, i32 x, i32 y) {
   }
 }
 
-int layer_free(layer_t *layer) {
-  // Save information before free
-  u16 x = layer->x, y = layer->y;
-  u16 w = layer->width, h = layer->height;
-  i16 rank = layer->rank;
-  if (tree_remove(&layerctl.layers, &layer) < 0) {
-    return -1;
-  }
-  node_alloc_reclaim(&layerctl.layer_info_alloc, layer);
-  layerctl.ntotal--;
-  if (rank > 0) {
-    emit_redraw_event(x, y, x + w, y + h);
-  }
-  return 0;
-}
-
 // (x0, y0) (Include) -> (x1, y1) (Exclude) is the area on the screen you want
 // to redraw. The coordinates are based on the whole screen, not any of the
 // possibly not-full-sreen layers.
@@ -232,35 +216,72 @@ void layers_redraw_all(int x0, int y0, int x1, int y1) {
   memcpy((void *)g_boot_info.vram_addr, vram, winh * winw);
 }
 
+// TODO: Notify mouse when last_receiver_layer is destroyed. Or invalid memory
+// access will happen.
+static mouse_msg_t last_mouse_msg = {0};
+static layer_t *last_mouse_receiver = NULL;
+
 void layers_receive_mouse_event(int x, int y, mouse_msg_t msg) {
   // xprintf("Searching layers tree. Size: %d\n", tree_size(&layerctl.layers));
-
-  for (void *key = tree_largest_key(&layerctl.layers); key; 
-      key = tree_prev_key(&layerctl.layers, key)) {
-    layer_t *layer = *(layer_t **)key;
-
-    // Skip mouse layer itself.
-    if (layer->rank > LAYER_RANK_MAX) {
-      continue;
-    }
-
-    if (x >= layer->x && x < (layer->x + layer->width) && 
-        y >= layer->y && y < (layer->y + layer->height)) {
-      int btn = msg.buf[0] & 0x07;
-
-      // Left button clicked
-      if (btn & 0x01) {
-        // Make the window focus
-        if (layer->focusable) {
-          layer_bring_to_front(layer);
-          // TODO: notify the layer who loses focus
-        }
-        // xprintf("Layer #%p is clicked by mouse\n", layer);
-      }
-
-      // TODO: send mouse event to process of the layer
-      break;
-    }
-    // xprintf("Layer #%p is skipped by mouse\n", layer);
+  layer_t *receiver = NULL;
+  
+  // When left button of mouse is clicked but never released, we should still
+  // track the last layer.
+  int lbutton_was_down = last_mouse_msg.buf[0] & 0x01;
+  if (lbutton_was_down && last_mouse_receiver) {
+    receiver = last_mouse_receiver;  
   }
+
+  if (!receiver) {
+    for (void *key = tree_largest_key(&layerctl.layers); key; 
+        key = tree_prev_key(&layerctl.layers, key)) {
+      layer_t *layer = *(layer_t **)key;
+      // Skip mouse layer itself and whatever layers unclickable.
+      if (layer->rank > LAYER_RANK_MAX) {
+        continue;
+      }
+      if (x >= layer->x && x < (layer->x + layer->width) && 
+          y >= layer->y && y < (layer->y + layer->height)) {
+        receiver = layer;
+        break;
+      }
+      // xprintf("Layer #%p is skipped by mouse\n", layer);
+    }
+  }
+
+  if (receiver) {
+    int btn = msg.buf[0] & 0x07;
+    // Left button clicked
+    if (btn & 0x01) {
+      // Make the window focus
+      if (receiver->focusable) {
+        layer_bring_to_front(receiver);
+        // TODO: notify the layer who loses focus
+      }
+      // xprintf("Layer #%p is clicked by mouse\n", layer);
+    }
+    // TODO: send mouse event to process of the layer if its irq bit is set.
+  }
+
+  last_mouse_msg = msg;
+  last_mouse_receiver = receiver;
+}
+
+int layer_free(layer_t *layer) {
+  // Save information before free
+  u16 x = layer->x, y = layer->y;
+  u16 w = layer->width, h = layer->height;
+  i16 rank = layer->rank;
+  if (tree_remove(&layerctl.layers, &layer) < 0) {
+    return -1;
+  }
+  node_alloc_reclaim(&layerctl.layer_info_alloc, layer);
+  layerctl.ntotal--;
+  if (rank > 0) {
+    emit_redraw_event(x, y, x + w, y + h);
+  }
+  if (layer == last_mouse_receiver) {
+    last_mouse_receiver = NULL;
+  }
+  return 0;
 }

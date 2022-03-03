@@ -6,7 +6,6 @@ extern "C" {
 #endif
 
 #include <support/type.h>
-#include <support/debug.h>
 #include <memory/memory.h>
 #include <string.h>
 
@@ -28,7 +27,6 @@ static inline int queue_is_empty(const queue_t *q) {
 static inline void queue_init(queue_t *q, size_t element_size,
                               size_t capacity, malloc_fp_t alloc,
                               free_fp_t free) {
-  xassert(q && alloc && free);
   q->element_size = element_size;
   q->capacity = capacity;
   q->front = 0;
@@ -45,7 +43,6 @@ static inline void queue_destroy(queue_t *q) {
 }
 
 static inline void queue_pop(queue_t *q, void *out) {
-  xassert(!queue_is_empty(q));
   memcpy(out, q->queue + q->front * q->element_size, q->element_size);
   if (++q->front >= q->capacity) {
     q->front -= q->capacity;
@@ -54,13 +51,11 @@ static inline void queue_pop(queue_t *q, void *out) {
 
 // Get the first element, but do not remove it.
 static inline void queue_peek(queue_t *q, void *out) {
-  xassert(!queue_is_empty(q));
   memcpy(out, q->queue + q->front * q->element_size, q->element_size);
 }
 
 // Get the pointer to the first element.
 static inline void *queue_get_first(queue_t *q) {
-  xassert(!queue_is_empty(q));
   return q->queue + q->front * q->element_size;
 }
 
@@ -72,7 +67,6 @@ static inline int queue_push(queue_t *q, const void *in) {
     q->end = next;
     return 0;
   }
-  xprintf("Warning: queue_push() on 0X%p failed because queue is full\n", q);
   return -1;
 }
 

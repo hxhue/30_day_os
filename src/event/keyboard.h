@@ -12,6 +12,8 @@ extern const char g_keycode_table[0x54];
 
 void emit_keyboard_event(unsigned data);
 void init_keyboard_event_queue();
+void wait_kbdc_ready();
+void init_keyboard();
 
 typedef struct keyboard_listener_t {
   void (*on_key_clicked)(int keycode);

@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <support/asm.h>
 #include <support/queue.h>
+#include <boot/def.h>
 
 // static keyboard_listener_queue;
 
@@ -57,4 +58,22 @@ event_queue_t g_keyboard_event_queue = {
   .empty = keyboard_event_queue_empty,
   .consume = keyboard_event_queue_consume
 };
+
+// Keyboard controller is slow so CPU has to wait.
+// But kbdc was fast when I tested it in Qemu.
+void wait_kbdc_ready() {
+  while (asm_in8(PORT_KEYSTA) & KEYSTA_SEND_NOT_READY) {
+    // Continue
+  }
+}
+
+void init_keyboard() {
+  wait_kbdc_ready();
+  // Send command: set mode (0x60).
+  asm_out8(PORT_KEYCMD, KEYCMD_WRITE_MODE);
+  wait_kbdc_ready();
+  // Send data: a mode that can use mouse (0x47).
+  // Mouse communicates through keyboard control circuit.
+  asm_out8(PORT_KEYDAT, KBC_MODE);
+}
 

@@ -6,7 +6,6 @@ extern "C" {
 #endif
 
 #include <support/type.h>
-#include <support/debug.h>
 #include <memory/memory.h>
 #include <string.h>
 
@@ -35,7 +34,6 @@ priority_queue_init(priority_queue_t *q, size_t element_size,
                     size_t capacity, void (*swap)(void *, void *),
                     int (*less)(void *, void *), malloc_fp_t alloc,
                     free_fp_t free) {
-  xassert(q && swap && less && alloc && free);
   q->element_size = element_size;
   q->size = 0;
   q->capacity = capacity;
@@ -85,8 +83,6 @@ static inline void priority_queue_sink(priority_queue_t *q, u32 i) {
 // Returns 0 on success, -1 on failure.
 static inline int priority_queue_push(priority_queue_t *q, const void *in) {
   if (q->size == q->capacity) {
-    xprintf("Warning: priority_queue_push() on 0X%p failed "
-            "because queue is full\n", q);
     return -1;
   }
   // The first element is skipped. For a heap with size "n", the last elements
@@ -98,7 +94,6 @@ static inline int priority_queue_push(priority_queue_t *q, const void *in) {
 }
 
 static inline void priority_queue_pop(priority_queue_t *q, void *out) {
-  xassert(!priority_queue_is_empty(q));
   u32 sz = q->size--;
   // q->heap[1] is temporarily filled with garbage, but then swapped with the
   // last element. After size is decremented by 1, the heap is normal again.
@@ -109,13 +104,11 @@ static inline void priority_queue_pop(priority_queue_t *q, void *out) {
 
 // Get the first element, but do not remove it.
 static inline void priority_queue_peek(priority_queue_t *q, void *out) {
-  xassert(!priority_queue_is_empty(q));
   memcpy(out, q->heap + q->element_size, q->element_size);
 }
 
 // Get the pointer to the first element.
 static inline void *priority_queue_get_first(priority_queue_t *q) {
-  xassert(!priority_queue_is_empty(q));
   return q->heap + q->element_size;
 }
 

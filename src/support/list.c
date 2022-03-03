@@ -1,4 +1,3 @@
-#include "list.h"
 #include "support/list.h"
 #include <stddef.h>
 #include <string.h>

@@ -6,8 +6,19 @@
 #include <support/type.h>
 #include <support/debug.h>
 #include <support/queue.h>
+#include <event/keyboard.h>
+#include <boot/def.h>
 
 extern layer_t *g_mouse_layer;
+
+void init_mouse() {
+  wait_kbdc_ready();
+  // Send command: transfer data to mouse
+  asm_out8(PORT_KEYCMD, KEYCMD_SENDTO_MOUSE);
+  wait_kbdc_ready();
+  // Send data: tell mouse to start working
+  asm_out8(PORT_KEYDAT, MOUSECMD_ENABLE);
+}
 
 // For a mouse initialized in this system, a packet consists 3 bytes.
 // (For other systems, mouse may have an optional 4 bytes)
