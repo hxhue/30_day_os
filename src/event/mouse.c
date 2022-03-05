@@ -67,8 +67,8 @@ static void inline handle_event_mouse_impl(mouse_msg_t msg) {
     .button = {btn & 0x01, btn & 0x02, btn & 0x04}, // Left/Middle/Right
     .x = x, 
     .y = y,
-    .mx = offset_x, 
-    .my = offset_y,
+    .mx = new_x - x, // Use (bounded) new_x - x instead of offset_x
+    .my = new_y - y,
     .layer = NULL
   };
   layers_receive_mouse_event(x, y, decoded_msg);
