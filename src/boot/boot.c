@@ -24,12 +24,12 @@ layer_t *window_layer1;
 layer_t *window_layer2;
 
 // Temporary
-static void window_random_square() {
-  draw_rect(window_layer1, rand() % RGB_TRANSPARENT, 1, 1, 32, 32);
-  emit_draw_event(window_layer1->x + 1, window_layer1->y + 1, 
-                  window_layer1->x + 32, window_layer1->y + 32, 0);
-  add_timer(20, window_random_square);
-}
+// static void window_random_square() {
+//   draw_rect(window_layer1, rand() % RGB_TRANSPARENT, 1, 1, 32, 32);
+//   emit_draw_event(window_layer1->x + 1, window_layer1->y + 1, 
+//                   window_layer1->x + 32, window_layer1->y + 32, 0);
+//   add_timer(20, window_random_square);
+// }
 
 void task_b_main() {
   window_layer2 = make_window(160, 52, "Inputbox2");
@@ -76,10 +76,54 @@ void task_b_main() {
       }
     }
 
-    // Work of task_b
-    // draw_rect(window_layer2, rand() % 16, 0, 0, 32, 32);
-    // layers_draw_all(window_layer2->x, window_layer2->y, window_layer2->x + 32,
-    //                 window_layer2->y + 32, 0);
+    asm_hlt();
+  }
+}
+
+void task_c_main() {
+  window_layer1 = make_window(160, 52, "Inputbox");
+  layer_move_to(window_layer1, 160, 100);
+  draw_textbox(window_layer1, 8, 28, 144, 16, RGB_WHITE);
+  layer_bring_to_front(window_layer1);
+
+  // Register mouse event
+  process_register_event(current_proc_node, EVENTNO_MOUSE);
+  int drag_mode = 0;
+  decoded_mouse_msg_t last_msg = {0};
+
+  for (;;) {
+    // Check events
+    process_t *proc = get_proc_from_node(current_proc_node);
+    if (proc->events & EVENTBIT_MOUSE) {
+      proc->events &= ~EVENTBIT_MOUSE;
+
+      queue_t *q = &proc->mouse_msg_queue;
+      while (!queue_is_empty(q)) {
+        decoded_mouse_msg_t msg;
+        queue_pop(q, &msg);
+
+        int in_drag_region = 0;
+        if (msg.button[0] && msg.layer) {
+          int x0 = msg.layer->x; 
+          int y0 = msg.layer->y; 
+          int x1 = x0 + msg.layer->width;
+          int y1 = y0 + msg.layer->height;
+          in_drag_region =
+              msg.x >= x0 && msg.x < x1 && msg.y >= y0 && msg.y < y1;
+        }
+        if (!last_msg.button[0] && msg.button[0] && in_drag_region) {
+          drag_mode = 1;
+        } else if (!msg.button[0]) {
+          drag_mode = 0;
+        }
+
+        if (drag_mode) {
+          layer_move_by(msg.layer, msg.mx, msg.my);
+        }
+
+        last_msg = msg;
+      }
+    }
 
     asm_hlt();
   }
@@ -104,14 +148,9 @@ void startup(void) {
 
   // Set color and cursor; draw a background.
   init_display();
-
-  window_layer1 = make_window(160, 52, "Inputbox");
-  layer_move_to(window_layer1, 160, 100);
-  draw_textbox(window_layer1, 8, 28, 144, 16, RGB_WHITE);
-  layer_bring_to_front(window_layer1);
   
   void *task_b_esp = alloc_mem_4k(64 * 1024) + 64 * 1024;
-  process_t *pb = process_new(6, "Random Squaure");
+  process_t *pb = process_new(6, "InputBox2");
   pb->tss.eip = (int)&task_b_main;
   pb->tss.esp = (int)task_b_esp;
   pb->tss.es = 1 * 8;
@@ -122,7 +161,17 @@ void startup(void) {
   pb->tss.gs = 1 * 8;
   process_start(pb);
 
-  add_timer(20, window_random_square);
+  void *task_c_esp = alloc_mem_4k(64 * 1024) + 64 * 1024;
+  process_t *pc = process_new(6, "InputBox");
+  pc->tss.eip = (int)&task_c_main;
+  pc->tss.esp = (int)task_c_esp;
+  pc->tss.es = 1 * 8;
+  pc->tss.cs = 2 * 8;
+  pc->tss.ss = 1 * 8;
+  pc->tss.ds = 1 * 8;
+  pc->tss.fs = 1 * 8;
+  pc->tss.gs = 1 * 8;
+  process_start(pc);
 
   event_loop();
 

@@ -170,6 +170,7 @@ void layer_bring_to_front(layer_t *layer) {
 // Changes the position of the layer.
 // Requirements: x >= 0, x < 65536, y >= 0, y < 65536
 void layer_move_to(layer_t *layer, i32 x, i32 y) {
+  xassert(layer);
   int x0 = layer->x;
   int y0 = layer->y;
   layer->x = x;
@@ -185,6 +186,7 @@ void layer_move_to(layer_t *layer, i32 x, i32 y) {
 // Changes the position of the layer.
 // Requirements: x >= 0, x < 65536, y >= 0, y < 65536
 void layer_move_by(layer_t *layer, i32 x, i32 y) {
+  xassert(layer);
   x = clamp_i32(layer->x + x, 0, 65535);
   y = clamp_i32(layer->y + y, 0, 65535);
   if (x || y) {
@@ -278,6 +280,7 @@ void layers_receive_mouse_event(int x, int y, decoded_mouse_msg_t msg) {
         queue_push(&receiver_proc->layer_msg_queue, &layer_msg);
         focused_layer = receiver;
         process_set_urgent(receiver->proc_node);
+        // process_try_preempt(); // Useless when dragging is laggy
         // xprintf("focused_layer=%d\n", receiver);
       }
 

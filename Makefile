@@ -41,11 +41,11 @@ FAT12IMG  := ruby $(BIN)/fat12img.rb
 # LD := $(BIN)\i386-elf-binutils\bin\i386-elf-ld.exe -m elf_i386
 # LD := ld
 
-C_FLAGS   = -m32 -Isrc -Isrc/libc -nostdinc -std=c11 -static-libgcc -lgcc -O2 \
-						-Wall -ffreestanding
+C_FLAGS = -m32 -Isrc -Isrc/libc -nostdinc -std=c11 -static-libgcc -lgcc -O2 \
+					-Wall -ffreestanding
 
 QEMU_IMG  := $(BUILD)/os.img
-QEMU_RUN  := qemu-system-x86_64 -m 64 -rtc base=localtime -vga std \
+QEMU_RUN  := qemu-system-x86_64 -m 32 -rtc base=localtime -vga std \
 	-drive "file=$(QEMU_IMG),format=raw,if=floppy" -serial stdio --no-reboot \
 	-accel whpx,kernel-irqchip=off
 

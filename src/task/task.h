@@ -86,6 +86,10 @@ int  process_switch();
 void process_try_preempt(); // Calls process_switch() when current process is
                             // not urgent.
 
+// Used only in kernel process. Experimental.
+void stop_ts_count();
+void resume_ts_count();
+
 #if (defined(__cplusplus))
 }
 #endif

@@ -49,12 +49,7 @@ process_t *get_proc_from_node(process_node_t *node) {
   return *(process_t **)list_get_value(node);
 }
 
-void init_task_mgr() {
-  tree_init(&g_task_mgr.process_tree, sizeof(process_t), alloc_mem2, 
-            reclaim_mem2, process_cmp);
-  for (int i = 0; i < SCHEDULER_QUEUE_NUM; ++i) {
-    list_init(&g_task_mgr.queues[i], sizeof(void *), alloc_mem2, reclaim_mem2);
-  }
+static void init_kernel_proc() {
   // Create kernel task
   process_t *p = process_new(9, "kernel");
   // Since the kernel process is the first process, it should be assigned
@@ -68,6 +63,15 @@ void init_task_mgr() {
   kernel_proc_node = list_make_node(&g_task_mgr.queues[0], &p); 
   current_proc_node = kernel_proc_node;
   asm_load_tr(p->sel * 8);
+}
+
+void init_task_mgr() {
+  tree_init(&g_task_mgr.process_tree, sizeof(process_t), alloc_mem2, 
+            reclaim_mem2, process_cmp);
+  for (int i = 0; i < SCHEDULER_QUEUE_NUM; ++i) {
+    list_init(&g_task_mgr.queues[i], sizeof(void *), alloc_mem2, reclaim_mem2);
+  }
+  init_kernel_proc();
 }
 
 // TSS: eflags set to 0x00000202, iomap set to 0x40000000, others set to 0.
@@ -92,7 +96,7 @@ process_t *process_new(int priority, const char *name) {
   }
   
   // The following operations will not change rank of the tree node.
-  p->tsnow = p->tsmax = clamp_i32(priority, 0, 9) * 5 + 2;
+  p->tsnow = p->tsmax = clamp_i32(priority, 0, 9) * 2 + 4;
   strncpy(p->name, name, sizeof(p->name) - 1);
   p->name[sizeof(p->name) - 1] = '\0';
   p->flags = 0;
@@ -141,6 +145,10 @@ void process_enqueue(list_node_t *pnode) {
 int process_switch() {
   // xprintf("%s\n", __func__);
   process_t *p = NULL;
+
+  u32 eflags = asm_load_eflags();
+  asm_cli();
+
   for (int i = 0; i < SCHEDULER_QUEUE_NUM; ++i) {
     list_t *list = &g_task_mgr.queues[i];
     if (list_size(list) > 0) {
@@ -159,6 +167,9 @@ int process_switch() {
       break;
     }
   }
+
+  asm_store_eflags(eflags);
+
   if (p) {
     asm_farjmp(0, p->sel * 8);
     return 1;
@@ -174,7 +185,21 @@ void process_try_preempt() {
   }
 }
 
+static int ts_count_stop_flag = 0;
+
+void stop_ts_count() {
+  ts_count_stop_flag = 1;
+}
+
+void resume_ts_count() {
+  ts_count_stop_flag = 0;
+}
+
 void process_count_time_slice() {
+  if (ts_count_stop_flag) {
+    return;
+  }
+
   process_t *p = get_proc_from_node(current_proc_node);
   // xprintf("%s\n", __func__);
   if (p->flags & PROCFLAG_URGENT) {
@@ -216,11 +241,18 @@ int process_set_urgent(process_node_t *pnode) {
 
   if (proc->state == PROCSTATE_READY && !(proc->flags & PROCFLAG_URGENT)) {
     xassert(pnode != current_proc_node);
+
+    u32 eflags = asm_load_eflags();
+    asm_cli();
+
     proc->flags |= PROCFLAG_URGENT;
     list_t *list = &g_task_mgr.queues[proc->priority];
     list_unlink(list, pnode);
     list_t *urgent_list = &g_task_mgr.queues[SCHEDULER_QUEUE_URGENT];
     list_push_back(urgent_list, pnode);
+
+    asm_store_eflags(eflags);
+
     return 1;
   }
   return 0;

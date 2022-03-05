@@ -33,7 +33,8 @@ void prepare_event_loop() {
 void event_loop() {
   for (;;) {
     asm_cli();
-    // Search for a non-empty queue.
+    // stop_ts_count();
+    
     int queue_index = -1, i;
     for (i = 0; i < sizeof(event_queues) / sizeof(event_queues[0]); ++i) {
       if (!event_queues[i]->empty()) {
@@ -41,12 +42,13 @@ void event_loop() {
         break;
       }
     }
-    // No new event.
+    
     if (queue_index < 0) {
       asm_sti();
       process_yield();
       continue;
     }
+
     // asm_sti() is called inside the consume() function.
     event_queues[queue_index]->consume();
   }

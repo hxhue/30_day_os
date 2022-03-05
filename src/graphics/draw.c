@@ -335,7 +335,7 @@ void init_display() {
 static queue_t draw_msg_queue;
 static int drawing_size = 0;
 
-#define DRAW_MSG_QUEUE_URGENT_THRESHOLD  12
+#define DRAW_MSG_QUEUE_URGENT_THRESHOLD 256 // Larger than queue size: Disable
 #define DRAW_MSG_QUEUE_SIZE             128
 
 // Size of redraw_msg_queue is small, since it is designed to overflow easily so
@@ -363,11 +363,12 @@ void emit_draw_event(int x0, int y0, int x1, int y1, u8 flags) {
   int status = draw_queue_push(&msg);
   if (status < 0) {
     merge_flag = 1;
-    xprintf("emit_draw_event(): Queue is full. Merging redrawing requests\n");
+    xprintf("M0");
   } else {
     drawing_size += (x1 - x0) * (y1 - y0);
     if (drawing_size > g_boot_info.width * g_boot_info.height) {
       merge_flag = 1;
+      // xprintf("M1");
     }
   }
   if (merge_flag) {
@@ -377,14 +378,16 @@ void emit_draw_event(int x0, int y0, int x1, int y1, u8 flags) {
     drawing_size = g_boot_info.width * g_boot_info.height;
   }
 
-  u32 size = queue_size(&draw_msg_queue);
+  // u32 size = queue_size(&draw_msg_queue);
   
   asm_store_eflags(eflags);
 
-  if (size > DRAW_MSG_QUEUE_URGENT_THRESHOLD) {
-    process_set_urgent(kernel_proc_node);
-    process_try_preempt();
-  }
+  // This is laggy...
+  // if (size > DRAW_MSG_QUEUE_URGENT_THRESHOLD) {
+  //   process_set_urgent(kernel_proc_node);
+  //   process_try_preempt();
+  //   xprintf("!");
+  // }
 }
 
 int draw_event_queue_is_empty() {

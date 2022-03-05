@@ -13,7 +13,7 @@ extern "C" {
 typedef struct event_queue_t {
   // Checks if the queue is empty. Returns non-zero if empty, and 0 if not.
   int (*empty)(void);
-  // Takes exactly one element from the queue, then calls asm_sti() to enable
+  // Takes one element from the queue, then calls asm_sti() to enable
   // interrupts, then processes the element.
   void (*consume)(void);
 } event_queue_t;
