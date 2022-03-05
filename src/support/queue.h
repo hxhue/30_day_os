@@ -70,17 +70,6 @@ static inline int queue_push(queue_t *q, const void *in) {
   return -1;
 }
 
-// Returns 0 on success, -1 on failure.
-static inline int queue_push_no_warning(queue_t *q, const void *in) {
-  u32 next = (q->end + 1) % q->capacity;
-  if (next != q->front) {
-    memcpy(q->queue + q->end * q->element_size, in, q->element_size);
-    q->end = next;
-    return 0;
-  }
-  return -1;
-}
-
 static inline void queue_clear(queue_t *q) {
   q->front = q->end = 0;
 }

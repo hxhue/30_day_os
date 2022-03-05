@@ -20,13 +20,13 @@ static event_queue_t *event_queues[] = {
   &g_mouse_event_queue,
   &g_keyboard_event_queue,
   &g_timer_event_queue,
-  &g_redraw_event_queue,
+  &g_draw_event_queue,
 };
 
 void prepare_event_loop() {
   init_mouse_event_queue();
   init_keyboard_event_queue();
-  init_redraw_event_queue();
+  init_draw_event_queue();
   init_timer_event_queue();
 }
 

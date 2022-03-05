@@ -28,6 +28,17 @@ typedef enum RGBColor {
   RGB_TRANSPARENT = 16,
 } Color;
 
+typedef struct region_t {
+  int x0, y0, x1, y1;
+} region_t;
+
+#define DRAW_GROUP_FLAG 0x1 // Do not draw this region immediately
+
+typedef struct draw_msg_t {
+  region_t region;
+  u8 flags;
+} draw_msg_t;
+
 void init_display();
 
 struct layer_t;
@@ -39,13 +50,10 @@ struct layer_t *make_window(int width, int height, const char *title);
 void draw_textbox(struct layer_t *layer, int x0, int y0, int width, int height,
                   Color bg);
 
-typedef struct region_t {
-  int x0, y0, x1, y1;
-} region_t;
 
-extern event_queue_t g_redraw_event_queue;
-void init_redraw_event_queue();
-void emit_redraw_event(int x0, int y0, int x1, int y1);
+extern event_queue_t g_draw_event_queue;
+void init_draw_event_queue();
+void emit_draw_event(int x0, int y0, int x1, int y1, u8 flags);
 
 #if (defined(__cplusplus))
 	}

@@ -1,6 +1,8 @@
 #include "graphics/draw.h"
 #include "graphics/layer.h"
 #include "support/debug.h"
+#include "support/queue.h"
+#include "support/asm.h"
 #include "task/task.h"
 #include <boot/boot.h>
 #include <event/event.h>
@@ -305,7 +307,8 @@ void draw_rect(layer_t *layer, Color color, int x0, int y0, int x1, int y1) {
 // - layer is valid
 // - rect is accessible, and holds at least width * height bytes
 // - width >= 0, height >= 0
-void draw_image(layer_t *layer, const u8 *rect, int width, int height, int x, int y) {
+void draw_image(layer_t *layer, const u8 *rect, int width, int height, int x,
+                int y) {
   u8 *vram = layer->buf;
   int minj = max_i32(0, -y);
   int mini = max_i32(0, -x);
@@ -321,11 +324,6 @@ void draw_image(layer_t *layer, const u8 *rect, int width, int height, int x, in
   }
 }
 
-// x1 > x0, y1 > y0
-static inline void handle_event_redraw(const region_t *region) {
-  layers_redraw_all(region->x0, region->y0, region->x1, region->y1);
-}
-
 void init_display() {
   init_palette();
   init_layer_mgr();
@@ -334,60 +332,83 @@ void init_display() {
   init_cursor();     // Cursor layer
 }
 
-static queue_t redraw_msg_queue;
+static queue_t draw_msg_queue;
 static int drawing_size = 0;
 
-#define REDRAW_MSG_QUEUE_SIZE 128
+#define DRAW_MSG_QUEUE_URGENT_THRESHOLD  12
+#define DRAW_MSG_QUEUE_SIZE             128
 
 // Size of redraw_msg_queue is small, since it is designed to overflow easily so
 // we can know when we should combine redrawing events.
-void init_redraw_event_queue() {
-  queue_init(&redraw_msg_queue, sizeof(region_t), REDRAW_MSG_QUEUE_SIZE,
+void init_draw_event_queue() {
+  queue_init(&draw_msg_queue, sizeof(draw_msg_t), DRAW_MSG_QUEUE_SIZE,
              alloc_mem2, reclaim_mem2);
 }
 
-void emit_redraw_event(int x0, int y0, int x1, int y1) {
+static inline int draw_queue_push(const draw_msg_t *pmsg) {
+  return queue_push(&draw_msg_queue, pmsg);
+}
+
+void emit_draw_event(int x0, int y0, int x1, int y1, u8 flags) {
   if (x0 >= x1 || y0 >= y1) {
-    xprintf("emit_redraw_event(): Illegal region area. Rejected.");
+    xprintf("emit_draw_event(): Illegal region area. Rejected.");
     return;
   }
-  region_t region = {x0, y0, x1, y1};
-  int flag = 0;
-  int status = queue_push(&redraw_msg_queue, &region);
+  draw_msg_t msg = {{x0, y0, x1, y1}, flags};
+  int merge_flag = 0;
+
+  u32 eflags = asm_load_eflags(); // Bit 9 contains interrupt permission.
+  asm_cli();                      // Clear interrupt permission.
+
+  int status = draw_queue_push(&msg);
   if (status < 0) {
-    flag = 1;
-    xprintf("Warning: queue_push() on redraw queue failed. Merging redrawing "
-            "requests\n");
+    merge_flag = 1;
+    xprintf("emit_draw_event(): Queue is full. Merging redrawing requests\n");
   } else {
     drawing_size += (x1 - x0) * (y1 - y0);
     if (drawing_size > g_boot_info.width * g_boot_info.height) {
-      flag = 1;
-      // xprintf(
-      //     "Warning: Redrawing task is too heavy. Merging redrawing requests\n");
+      merge_flag = 1;
     }
   }
-  if (flag) {
-    queue_clear(&redraw_msg_queue);
-    region_t full_region = {0, 0, g_boot_info.width, g_boot_info.height};
-    queue_push(&redraw_msg_queue, &full_region);
+  if (merge_flag) {
+    queue_clear(&draw_msg_queue);
+    draw_msg_t msg = {{0, 0, g_boot_info.width, g_boot_info.height}, 0};
+    draw_queue_push(&msg);
     drawing_size = g_boot_info.width * g_boot_info.height;
+  }
+
+  u32 size = queue_size(&draw_msg_queue);
+  
+  asm_store_eflags(eflags);
+
+  if (size > DRAW_MSG_QUEUE_URGENT_THRESHOLD) {
+    process_set_urgent(kernel_proc_node);
+    process_try_preempt();
   }
 }
 
-int redraw_event_queue_is_empty() {
-  return queue_is_empty(&redraw_msg_queue);
+int draw_event_queue_is_empty() {
+  return queue_is_empty(&draw_msg_queue);
 }
 
-void redraw_event_queue_consume() {
-  region_t region;
-  queue_pop(&redraw_msg_queue, &region);
-  asm_sti();
-  drawing_size -= (region.x1 - region.x0) * (region.y1 - region.y0);
+void draw_event_queue_consume() {
+  draw_msg_t msg;
+  queue_pop(&draw_msg_queue, &msg);
+  int x0 = msg.region.x0;
+  int y0 = msg.region.y0;
+  int x1 = msg.region.x1;
+  int y1 = msg.region.y1;
+  xassert(x1 >= x0);
+  xassert(y1 >= y0);
+  drawing_size -= (x1 - x0) * (y1 - y0);
   xassert(drawing_size >= 0);
-  handle_event_redraw(&region);
+  
+  asm_sti();
+
+  layers_draw_all(x0, y0, x1, y1, msg.flags);
 }
 
-event_queue_t g_redraw_event_queue = {
-  .empty = redraw_event_queue_is_empty,
-  .consume = redraw_event_queue_consume
+event_queue_t g_draw_event_queue = {
+  .empty = draw_event_queue_is_empty,
+  .consume = draw_event_queue_consume
 };

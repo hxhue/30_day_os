@@ -5,6 +5,7 @@
 extern "C" {
 #endif
 
+#include <support/queue.h>
 #include <support/tree.h>
 #include <support/list.h>
 
@@ -36,22 +37,10 @@ enum ProcessFlags {
 	PROCFLAG_URGENT = 0x01, // Related to state "ready".
 };
 
-enum IRQNO {
-	IRQNO_TIMER    = 0,
-	IRQNO_KEYBOARD = 1,
-	IRQNO_MOUSE    = 12,
-};
-
-enum IRQBit {
-	IRQBIT_TIMER    = (1 << 0),
-	IRQBIT_KEYBOARD = (1 << 1),
-	IRQBIT_MOUSE    = (1 << 12),
-};
-
 struct process_t {
 	int sel, state;
 	unsigned flags;
-	unsigned short irqmask, irq;
+	unsigned short event_mask, events;
 	// Schedule-related data.
 	int priority, tsmax, tsnow; 
 	pid_t pid;
@@ -59,6 +48,8 @@ struct process_t {
   tree_t children;         // tree of pid
 	char name[32];
 	TSS32_t tss;
+	queue_t mouse_msg_queue; // queue of decoded_mouse_msg_t
+	queue_t layer_msg_queue; // queue of layer_msg_t
 };
 
 typedef list_node_t process_node_t;
@@ -88,8 +79,8 @@ process_t *get_proc_from_node(process_node_t *node);
 // updated with a higher priority (smaller priority field value). For a certain
 // irq packet, not every process which has registered IRQs will receive it.
 // TODO: This may be merged into signals.
-void process_register_irq(process_node_t *pnode, int irqno);
-void process_unregister_irq(process_node_t *pnode, int irqno);
+void process_register_event(process_node_t *pnode, int eventno);
+void process_unregister_event(process_node_t *pnode, int eventno);
 
 int  process_switch();
 void process_try_preempt(); // Calls process_switch() when current process is

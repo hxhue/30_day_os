@@ -22,7 +22,20 @@ void init_devices();
 void prepare_event_loop();
 void event_loop();
 
-// extern tree_t g_irq_sets[16];
+// Stored in processes
+enum EventNo {
+	EVENTNO_TIMER      = 0,
+	EVENTNO_KEYBOARD   = 1,
+  EVENTNO_FOCUS      = 2,
+	EVENTNO_MOUSE      = 12,
+};
+
+enum EventBit {
+	EVENTBIT_TIMER    = (1 << 0),
+	EVENTBIT_KEYBOARD = (1 << 1),
+  EVENTBIT_FOCUS    = (1 << 2),
+	EVENTBIT_MOUSE    = (1 << 12),
+};
 
 #if (defined(__cplusplus))
 }

@@ -1,3 +1,4 @@
+#include "event/mouse.h"
 #include <boot/boot.h>
 #include <event/event.h>
 #include <event/mouse.h>
@@ -40,7 +41,8 @@ static void inline handle_event_mouse_impl(mouse_msg_t msg) {
   i32 offset_x = msg.buf[1];
   i32 offset_y = msg.buf[2];
 
-  // Cast pointer to avoid implmentation-defined bit operation
+  // Cast pointer to avoid implmentation-defined bit operation on signed
+  // integers
   if (msg.buf[0] & 0x10) {
     *(u32 *)&offset_x |= 0xffffff00;
   }
@@ -51,11 +53,6 @@ static void inline handle_event_mouse_impl(mouse_msg_t msg) {
   // Direction of Y-axis of mouse is opposite to that of the screen.
   offset_y = -offset_y;
 
-  // int btn = msg.buf[0] & 0x07;
-  // if (btn & 0x01) buf[0] = 'L'; // Left button down
-  // if (btn & 0x02) buf[1] = 'R'; // Center button down
-  // if (btn & 0x04) buf[2] = 'C'; // Right button down
-
   int x = g_mouse_layer->x, y = g_mouse_layer->y;
   int new_x = clamp_i32(x + offset_x, 0, g_boot_info.width - 1);
   int new_y = clamp_i32(y + offset_y, 0, g_boot_info.height - 1);
@@ -65,7 +62,16 @@ static void inline handle_event_mouse_impl(mouse_msg_t msg) {
   }
 
   // Check if any layer can receive the mouse event.
-  layers_receive_mouse_event(x, y, msg);
+  int btn = msg.buf[0];
+  decoded_mouse_msg_t decoded_msg = {
+    .button = {btn & 0x01, btn & 0x02, btn & 0x04}, // Left/Middle/Right
+    .x = x, 
+    .y = y,
+    .mx = offset_x, 
+    .my = offset_y,
+    .layer = NULL
+  };
+  layers_receive_mouse_event(x, y, decoded_msg);
 }
 
 static queue_t g_mouse_msg_queue;

@@ -22,7 +22,12 @@ struct layer_t {
   u64 last_active_time; // Last time the layer is active
 };
 
-// extern layer_ctl_t *g_lctl;
+struct layer_msg_t {
+  u8 focus;             // 1: Gain focus. 0: Lose focus.
+  layer_t *layer;       // Which layer
+};
+
+typedef struct layer_msg_t layer_msg_t;
 
 void init_layer_mgr();
 
@@ -44,15 +49,16 @@ void layer_set_rank_no_bound(layer_t *layer, i16 rank);
 void layer_bring_to_front(layer_t *layer);
 
 void layer_move_to(layer_t *layer, i32 x, i32 y);
+void layer_move_by(layer_t *layer, i32 x, i32 y);
 
 // 0 on success, -1 on error
 int layer_free(layer_t *layer);
 
 // Redraw layers in given region.
-void layers_redraw_all(int x0, int y0, int x1, int y1);
+void layers_draw_all(int x0, int y0, int x1, int y1, u8 flags);
 
 // Receive mouse event
-void layers_receive_mouse_event(int x, int y, mouse_msg_t msg);
+void layers_receive_mouse_event(int x, int y, decoded_mouse_msg_t msg);
 
 #if (defined(__cplusplus))
 	}

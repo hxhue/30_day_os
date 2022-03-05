@@ -3,6 +3,7 @@
 #include "boot/def.h"
 #include "boot/gdt.h"
 #include "event/event.h"
+#include "event/mouse.h"
 #include "graphics/layer.h"
 #include "memory/memory.h"
 #include "support/queue.h"
@@ -95,12 +96,16 @@ process_t *process_new(int priority, const char *name) {
   strncpy(p->name, name, sizeof(p->name) - 1);
   p->name[sizeof(p->name) - 1] = '\0';
   p->flags = 0;
-  p->irqmask = 0;
-  p->irq = 0;
+  p->event_mask = 0;
+  p->events = 0;
+  queue_init(&p->mouse_msg_queue, sizeof(decoded_mouse_msg_t), 256, alloc_mem2,
+             reclaim_mem2);
+  queue_init(&p->layer_msg_queue, sizeof(layer_msg_t), 256, alloc_mem2,
+             reclaim_mem2);
   // Priority: 0: Urgent, 1: New, 2: Old.
   p->priority = SCHEDULER_QUEUE_NEW;
   p->state = PROCSTATE_READY;
-  tree_init(&p->layers, sizeof(void *), alloc_mem2, reclaim_mem2, 
+  tree_init(&p->layers, sizeof(void *), alloc_mem2, reclaim_mem2,
             layer_pointer_cmp);
   tree_init(&p->children, sizeof(pid_t), alloc_mem2, reclaim_mem2, pid_cmp);
   memset(&p->tss, 0, sizeof(p->tss));
@@ -221,26 +226,26 @@ int process_set_urgent(process_node_t *pnode) {
   return 0;
 }
 
-void process_register_irq(process_node_t *pnode, int irqno) {
-  if (irqno < 0 || irqno >= 16) {
+void process_register_event(process_node_t *pnode, int eventno) {
+  if (eventno < 0 || eventno >= 16) {
     return;
   }
   process_t *proc = get_proc_from_node(pnode);
-  u16 bit = 1 << irqno;
-  if (bit & proc->irqmask) { // Already registered.
+  u16 bit = 1 << eventno;
+  if (bit & proc->event_mask) { // Already registered.
     return;
   }
-  proc->irqmask |= bit;
+  proc->event_mask |= bit;
 }
 
-void process_unregister_irq(process_node_t *pnode, int irqno) {
-  if (irqno < 0 || irqno >= 16) {
+void process_unregister_event(process_node_t *pnode, int eventno) {
+  if (eventno < 0 || eventno >= 16) {
     return;
   }
   process_t *proc = get_proc_from_node(pnode);
-  u16 bit = 1 << irqno;
-  if (!(bit & proc->irqmask)) { // Not registered.
+  u16 bit = 1 << eventno;
+  if (!(bit & proc->event_mask)) { // Not registered.
     return;
   }
-  proc->irqmask &= ~bit;
+  proc->event_mask &= ~bit;
 }

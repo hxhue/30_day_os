@@ -1,4 +1,6 @@
 #include "graphics/draw.h"
+#include "event/mouse.h"
+#include "support/queue.h"
 #include "task/task.h"
 #include "support/asm.h"
 #include <boot/boot.h>
@@ -24,8 +26,8 @@ layer_t *window_layer2;
 // Temporary
 static void window_random_square() {
   draw_rect(window_layer1, rand() % RGB_TRANSPARENT, 1, 1, 32, 32);
-  emit_redraw_event(window_layer1->x + 1, window_layer1->y + 1, 
-                    window_layer1->x + 32, window_layer1->y + 32);
+  emit_draw_event(window_layer1->x + 1, window_layer1->y + 1, 
+                  window_layer1->x + 32, window_layer1->y + 32, 0);
   add_timer(20, window_random_square);
 }
 
@@ -35,18 +37,50 @@ void task_b_main() {
   draw_textbox(window_layer2, 8, 28, 144, 16, RGB_WHITE);
   layer_bring_to_front(window_layer2);
 
-  // Register mouse IRQ
-  process_register_irq(current_proc_node, IRQNO_MOUSE);
+  // Register mouse event
+  process_register_event(current_proc_node, EVENTNO_MOUSE);
+  int drag_mode = 0;
+  decoded_mouse_msg_t last_msg = {0};
 
   for (;;) {
-    draw_rect(window_layer2, rand() % 16, 0, 0, 32, 32);
-    layers_redraw_all(window_layer2->x, window_layer2->y, window_layer2->x + 32,
-                      window_layer2->y + 32);
+    // Check events
     process_t *proc = get_proc_from_node(current_proc_node);
-    if (proc->irq & IRQBIT_MOUSE) {
-      xprintf("Task b receives a mouse event!\n");
-      proc->irq &= ~IRQBIT_MOUSE;
+    if (proc->events & EVENTBIT_MOUSE) {
+      proc->events &= ~EVENTBIT_MOUSE;
+
+      queue_t *q = &proc->mouse_msg_queue;
+      while (!queue_is_empty(q)) {
+        decoded_mouse_msg_t msg;
+        queue_pop(q, &msg);
+
+        int in_drag_region = 0;
+        if (msg.button[0] && msg.layer) {
+          int x0 = msg.layer->x; 
+          int y0 = msg.layer->y; 
+          int x1 = x0 + msg.layer->width;
+          int y1 = y0 + msg.layer->height;
+          in_drag_region =
+              msg.x >= x0 && msg.x < x1 && msg.y >= y0 && msg.y < y1;
+        }
+        if (!last_msg.button[0] && msg.button[0] && in_drag_region) {
+          drag_mode = 1;
+        } else if (!msg.button[0]) {
+          drag_mode = 0;
+        }
+
+        if (drag_mode) {
+          layer_move_by(msg.layer, msg.mx, msg.my);
+        }
+
+        last_msg = msg;
+      }
     }
+
+    // Work of task_b
+    // draw_rect(window_layer2, rand() % 16, 0, 0, 32, 32);
+    // layers_draw_all(window_layer2->x, window_layer2->y, window_layer2->x + 32,
+    //                 window_layer2->y + 32, 0);
+
     asm_hlt();
   }
 }

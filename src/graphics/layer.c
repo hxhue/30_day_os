@@ -1,9 +1,12 @@
+#include "event/mouse.h"
 #include "graphics/draw.h"
 #include "boot/boot.h"
 #include "memory/memory.h"
+#include "support/queue.h"
 #include "support/tree.h"
 #include "graphics/layer.h"
 #include "support/debug.h"
+#include "support/type.h"
 #include "task/task.h"
 #include <boot/boot.h>
 #include <event/event.h>
@@ -156,8 +159,8 @@ void layer_set_rank_no_bound(layer_t *layer, i16 rank) {
   layer->last_active_time = g_counter.count;
   tree_update(&layerctl.layers, key);
 
-  emit_redraw_event(layer->x, layer->y, layer->x + layer->width,
-                    layer->y + layer->height);
+  emit_draw_event(layer->x, layer->y, layer->x + layer->width,
+                  layer->y + layer->height, 0);
 }
 
 void layer_bring_to_front(layer_t *layer) {
@@ -167,28 +170,32 @@ void layer_bring_to_front(layer_t *layer) {
 // Changes the position of the layer.
 // Requirements: x >= 0, x < 65536, y >= 0, y < 65536
 void layer_move_to(layer_t *layer, i32 x, i32 y) {
-  int x0 = layer->x, y0 = layer->y;
+  int x0 = layer->x;
+  int y0 = layer->y;
   layer->x = x;
   layer->y = y;
 
-  if (layer->rank <= 0) {
-    return;
+  if (layer->rank > 0) {    
+    int w = layer->width, h = layer->height;
+    emit_draw_event(x0, y0, x0 + w, y0 + h, DRAW_GROUP_FLAG);
+    emit_draw_event(x,  y,  x + w,  y + h, 0);
   }
+}
 
-  int w = layer->width, h = layer->height;
-  int screen_size = g_boot_info.width * g_boot_info.height;
-  if (w * h * 3 < screen_size) {
-    emit_redraw_event(x0, y0, x0 + w, y0 + h);
-    emit_redraw_event(x,  y,  x + w,  y + h);
-  } else {
-    emit_redraw_event(0, 0, g_boot_info.width, g_boot_info.height);
+// Changes the position of the layer.
+// Requirements: x >= 0, x < 65536, y >= 0, y < 65536
+void layer_move_by(layer_t *layer, i32 x, i32 y) {
+  x = clamp_i32(layer->x + x, 0, 65535);
+  y = clamp_i32(layer->y + y, 0, 65535);
+  if (x || y) {
+    layer_move_to(layer, x, y);
   }
 }
 
 // (x0, y0) (Include) -> (x1, y1) (Exclude) is the area on the screen you want
 // to redraw. The coordinates are based on the whole screen, not any of the
 // possibly not-full-sreen layers.
-void layers_redraw_all(int x0, int y0, int x1, int y1) {
+void layers_draw_all(int x0, int y0, int x1, int y1, u8 flags) {
   i32 winh = g_boot_info.height, winw = g_boot_info.width;
   u8 *vram = layerctl.vram;
   x0 = clamp_i32(x0, 0, winw);
@@ -219,23 +226,23 @@ void layers_redraw_all(int x0, int y0, int x1, int y1) {
   }
 
   // Copy buffer to vga buffer
-  memcpy((void *)g_boot_info.vram_addr, vram, winh * winw);
+  if (!(flags & DRAW_GROUP_FLAG)) {
+    memcpy((void *)g_boot_info.vram_addr, vram, winh * winw);
+  }
 }
 
-// TODO: Notify mouse when last_receiver_layer is destroyed. Or invalid memory
-// access will happen.
-static mouse_msg_t last_mouse_msg = {0};
-static layer_t *last_mouse_receiver = NULL;
+static decoded_mouse_msg_t last_mouse_msg = {0};
+static layer_t *focused_layer = NULL;
 
-void layers_receive_mouse_event(int x, int y, mouse_msg_t msg) {
+void layers_receive_mouse_event(int x, int y, decoded_mouse_msg_t msg) {
   // xprintf("Searching layers tree. Size: %d\n", tree_size(&layerctl.layers));
   layer_t *receiver = NULL;
   
   // When left button of mouse is clicked but never released, we should still
   // track the last layer.
-  int lbutton_was_down = last_mouse_msg.buf[0] & 0x01;
-  if (lbutton_was_down && last_mouse_receiver) {
-    receiver = last_mouse_receiver;  
+  int lbutton_was_down = last_mouse_msg.button[0];
+  if (lbutton_was_down && last_mouse_msg.layer) {
+    receiver = last_mouse_msg.layer;  
   }
 
   if (!receiver) {
@@ -251,29 +258,46 @@ void layers_receive_mouse_event(int x, int y, mouse_msg_t msg) {
         receiver = layer;
         break;
       }
-      // xprintf("Layer #%p is skipped by mouse\n", layer);
     }
   }
 
   if (receiver) {
-    int btn = msg.buf[0] & 0x07;
-    // Left button clicked
-    if (btn & 0x01) {
-      // Make the window focus
-      if (receiver->focusable) {
-        layer_bring_to_front(receiver);
-        // TODO: notify the layer who loses focus
+    // Check if focus will change.
+    if (msg.button[0] && receiver->focusable) {
+      if (focused_layer != receiver) {
+        // The focused layer loses focus.
+        if (focused_layer) {
+          process_t *proc = get_proc_from_node(focused_layer->proc_node);
+          layer_msg_t layer_msg = {.focus = 0, .layer = focused_layer};
+          queue_push(&proc->layer_msg_queue, &layer_msg);
+          process_set_urgent(focused_layer->proc_node);
+        }
+        // The receiver layer gains focus.
+        layer_msg_t layer_msg = {.focus = 1, .layer = receiver};
+        process_t *receiver_proc = get_proc_from_node(receiver->proc_node);
+        queue_push(&receiver_proc->layer_msg_queue, &layer_msg);
+        focused_layer = receiver;
+        process_set_urgent(receiver->proc_node);
+        // xprintf("focused_layer=%d\n", receiver);
       }
+
+      // TODO: move the logic into that of the newly focused layer
+      layer_bring_to_front(receiver); 
     }
-    process_t *proc = get_proc_from_node(receiver->proc_node);
-    if (proc->irqmask & IRQBIT_MOUSE) {
-      proc->irq |= IRQBIT_MOUSE;
-      // TODO: send mouse event to process of the layer if its irq bit is set.
+  }
+
+  // Send mouse message to process of the focused layer. If focus didn't change,
+  // the layer should be previous layer.
+  if (focused_layer) {
+    msg.layer = focused_layer;
+    process_t *proc = get_proc_from_node(focused_layer->proc_node);
+    if (proc->event_mask & EVENTBIT_MOUSE) {
+      proc->events |= EVENTBIT_MOUSE;
+      queue_push(&proc->mouse_msg_queue, &msg);
     }
   }
 
   last_mouse_msg = msg;
-  last_mouse_receiver = receiver;
 }
 
 int layer_free(layer_t *layer) {
@@ -287,10 +311,13 @@ int layer_free(layer_t *layer) {
   node_alloc_reclaim(&layerctl.layer_info_alloc, layer);
   layerctl.ntotal--;
   if (rank > 0) {
-    emit_redraw_event(x, y, x + w, y + h);
+    emit_draw_event(x, y, x + w, y + h, 0);
   }
-  if (layer == last_mouse_receiver) {
-    last_mouse_receiver = NULL;
+  if (layer == last_mouse_msg.layer) {
+    last_mouse_msg.layer = NULL;
+  }
+  if (layer == focused_layer) {
+    focused_layer = NULL;
   }
   return 0;
 }

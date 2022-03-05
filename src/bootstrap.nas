@@ -11,7 +11,7 @@ SCRNX	    EQU  0x0ff4    ; 解像度のX
 SCRNY	    EQU  0x0ff6    ; 解像度のY
 VRAM	    EQU  0x0ff8    ; グラフィックバッファの開始番地
 
-VBE_MODE  EQU  0x0105    ; 1024 * 768 * 8 bit
+VBE_MODE  EQU  0x0103    ; 0x105: 1024 * 768 * 8 bit
 
 		ORG		0xc200        ; このプログラムがどこに読み込まれるのか
 
@@ -121,9 +121,10 @@ keystatus:
 		AND		EAX,0x7fffffff	; bit31 = 0; Disable paging
 		OR		EAX,0x00000001	; bit0 = 1;  Protected virtual address mode
 		MOV		CR0,EAX
-		JMP		pipelineflush
+		; JMP		pipelineflush
 ; Skip first 8 bytes so it means GDT[1].
 ; Force CPU to discard pipelined instructions which are in different mode.
+; Is is necessary?
 pipelineflush:
 		MOV		AX,1*8			    ;  読み書き可能セグメント32bit
 		MOV		DS,AX

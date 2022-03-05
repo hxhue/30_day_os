@@ -17,7 +17,7 @@
 # 0x00400000 - ...        Free (application area)
 
 BIN        = bin
-BUILD      = build/tree
+BUILD      = build
 RULEFILE   = src/haribote.rul
 
 OBJ2BIM   := $(BIN)/obj2bim.exe
