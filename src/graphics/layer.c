@@ -249,12 +249,11 @@ void layers_receive_mouse_event(int x, int y, decoded_mouse_msg_t msg) {
   
   // When left button of mouse is clicked but never released, we should still
   // track the last layer.
-  int lbutton_was_down = last_mouse_msg.button[0];
-  if (lbutton_was_down && last_mouse_msg.layer) {
+  if (last_mouse_msg.button[0] && msg.button[0] && last_mouse_msg.layer) {
     receiver = last_mouse_msg.layer;
   }
 
-  if (!receiver) {
+  if (msg.button[0] && !receiver) {
     for (void *key = tree_largest_key(&layerctl.layers); key; 
         key = tree_prev_key(&layerctl.layers, key)) {
       layer_t *layer = *(layer_t **)key;
@@ -269,15 +268,18 @@ void layers_receive_mouse_event(int x, int y, decoded_mouse_msg_t msg) {
     }
   }
 
-  if (receiver && msg.button[0]) {
+  if (msg.button[0] && receiver) {
     // Check if focus will change.
     if (focused_layer && focused_layer != receiver) {
       // The focused layer loses focus.
       process_t *proc = get_proc_from_node(focused_layer->proc_node);
-      decoded_mouse_msg_t disconnect_msg = {0};
-      disconnect_msg.control = MOUSE_EVENT_LOSE_CONTROL;
-      queue_push(&proc->mouse_msg_queue, &disconnect_msg);
-      process_set_urgent(focused_layer->proc_node);
+      if (proc->event_mask & EVENTBIT_MOUSE) {
+        decoded_mouse_msg_t disconnect_msg = {0};
+        disconnect_msg.control = MOUSE_EVENT_LOSE_CONTROL;
+        disconnect_msg.layer = focused_layer;
+        queue_push(&proc->mouse_msg_queue, &disconnect_msg);
+        process_set_urgent(focused_layer->proc_node);
+      }
     }
     // The receiver gains focus.
     focused_layer = receiver;
@@ -289,7 +291,7 @@ void layers_receive_mouse_event(int x, int y, decoded_mouse_msg_t msg) {
     msg.layer = focused_layer;
     process_t *proc = get_proc_from_node(focused_layer->proc_node);
     if (proc->event_mask & EVENTBIT_MOUSE) {
-      proc->events |= EVENTBIT_MOUSE;
+      // proc->events |= EVENTBIT_MOUSE;
       queue_push(&proc->mouse_msg_queue, &msg);
     }
   }

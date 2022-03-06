@@ -40,18 +40,26 @@ void task_b_main() {
   // Register mouse event
   process_register_event(current_proc_node, EVENTNO_MOUSE);
   int drag_mode = 0;
+  int has_focus = 0;
   decoded_mouse_msg_t last_msg = {0};
 
   for (;;) {
     // Check events
     process_t *proc = get_proc_from_node(current_proc_node);
-    if (proc->events & EVENTBIT_MOUSE) {
-      proc->events &= ~EVENTBIT_MOUSE;
-
+    if (!queue_is_empty(&proc->mouse_msg_queue)) {
+      // proc->events &= ~EVENTBIT_MOUSE;
       queue_t *q = &proc->mouse_msg_queue;
       while (!queue_is_empty(q)) {
         decoded_mouse_msg_t msg;
         queue_pop(q, &msg);
+
+        if (msg.control == MOUSE_EVENT_LOSE_CONTROL) {
+          has_focus = 0;
+          redraw_window_title(msg.layer, "Console", RGB_GRAY_DARK);
+        } else if (msg.button[0] && !has_focus && msg.layer) {
+          has_focus = 1;
+          redraw_window_title(msg.layer, "Console", RGB_CYAN_DARK);
+        }
 
         int in_region = 0;
         if (msg.button[0] && msg.layer) {
@@ -89,17 +97,27 @@ void task_c_main() {
   process_register_event(current_proc_node, EVENTNO_MOUSE);
   int drag_mode = 0;
   decoded_mouse_msg_t last_msg = {0};
+  int has_focus = 0;
 
   for (;;) {
     // Check events
     process_t *proc = get_proc_from_node(current_proc_node);
-    if (proc->events & EVENTBIT_MOUSE) {
-      proc->events &= ~EVENTBIT_MOUSE;
+    if (!queue_is_empty(&proc->mouse_msg_queue)) {
+      // proc->events &= ~EVENTBIT_MOUSE;
 
       queue_t *q = &proc->mouse_msg_queue;
       while (!queue_is_empty(q)) {
         decoded_mouse_msg_t msg;
         queue_pop(q, &msg);
+        
+        if (msg.control == MOUSE_EVENT_LOSE_CONTROL) {
+          // MOUSE_EVENT_LOSE_CONTROL always comes with a layer
+          has_focus = 0;
+          redraw_window_title(msg.layer, "InpuxBox", RGB_GRAY_DARK);
+        } else if (msg.button[0] && !has_focus && msg.layer) {
+          has_focus = 1;
+          redraw_window_title(msg.layer, "InpuxBox", RGB_CYAN_DARK);
+        }
 
         int in_region = 0;
         if (msg.button[0] && msg.layer) {
@@ -123,6 +141,13 @@ void task_c_main() {
         last_msg = msg;
       }
     }
+
+    draw_textbox(window_layer1, 8, 28, 144, 16, RGB_WHITE);
+    char buf[64];
+    extern queue_t draw_msg_queue;
+    snprintf(buf, 64, "%d", queue_size(&draw_msg_queue));
+    draw_string(window_layer1, RGB_BLACK, 16, 28, buf);
+    // xprintf("\r%012d", queue_size(&draw_msg_queue));
 
     asm_hlt();
   }

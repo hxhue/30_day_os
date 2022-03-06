@@ -101,7 +101,7 @@ process_t *process_new(int priority, const char *name) {
   p->name[sizeof(p->name) - 1] = '\0';
   p->flags = 0;
   p->event_mask = 0;
-  p->events = 0;
+  // p->events = 0;
   queue_init(&p->mouse_msg_queue, sizeof(decoded_mouse_msg_t), 256, alloc_mem2,
              reclaim_mem2);
   // queue_init(&p->layer_msg_queue, sizeof(layer_msg_t), 256, alloc_mem2,

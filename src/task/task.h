@@ -40,7 +40,7 @@ enum ProcessFlags {
 struct process_t {
 	int sel, state;
 	unsigned flags;
-	unsigned short event_mask, events;
+	unsigned short event_mask;
 	// Schedule-related data.
 	int priority, tsmax, tsnow; 
 	pid_t pid;

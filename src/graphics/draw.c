@@ -119,14 +119,27 @@ layer_t *make_window(int width, int height, const char *title) {
   draw_rect(layer, RGB_GRAY_DARK, width-2, 1, width-1, height-1);
   draw_rect(layer, RGB_BLACK, width-1, 0, width, height);
   draw_rect(layer, RGB_GRAY, 2, 2, width-2, height-2);
-  draw_rect(layer, RGB_CYAN_DARK, 3, 3, width-3, 21);
   draw_rect(layer, RGB_GRAY_DARK, 1, height-2, width-1, height-1);
   draw_rect(layer, RGB_BLACK, 0, height-1, width, height);
-  draw_string(layer, RGB_WHITE, 24, 4, title);
-  draw_image(layer, &close_btn_image[0][0], CLOSE_BTN_IMAGE_WIDTH,
-            CLOSE_BTN_IMAGE_HEIGHT, width - 21, 5);
+  redraw_window_title(layer, title, RGB_GRAY_DARK);
+  // draw_rect(layer, RGB_CYAN_DARK, 3, 3, width-3, 21);
+  // draw_string(layer, RGB_WHITE, 24, 4, title);
+  // draw_image(layer, &close_btn_image[0][0], CLOSE_BTN_IMAGE_WIDTH,
+  //           CLOSE_BTN_IMAGE_HEIGHT, width - 21, 5);
 
   return layer;
+}
+
+void redraw_window_title(layer_t *layer, const char *title, Color bgcolor) {
+  xassert(layer);
+  int x = layer->x;
+  int y = layer->y;
+  int w = layer->width;
+  draw_rect(layer, bgcolor, 3, 3, w - 3, 21);
+  draw_string(layer, RGB_WHITE, 24, 4, title);
+  draw_image(layer, &close_btn_image[0][0], CLOSE_BTN_IMAGE_WIDTH,
+             CLOSE_BTN_IMAGE_HEIGHT, w - 21, 5);
+  emit_draw_event(x, y, x + w, y + 21, 0);
 }
 
 void draw_textbox(layer_t *layer, int x0, int y0, int width, int height,
@@ -332,7 +345,7 @@ void init_display() {
   init_cursor();     // Cursor layer
 }
 
-static queue_t draw_msg_queue;
+queue_t draw_msg_queue; // TODO: make static
 static int drawing_size = 0;
 
 #define DRAW_MSG_QUEUE_URGENT_THRESHOLD 256 // Larger than queue size: Disable

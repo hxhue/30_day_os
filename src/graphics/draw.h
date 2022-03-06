@@ -47,6 +47,7 @@ void draw_image(struct layer_t *layer, const u8 *rect, int width, int height, in
 void draw_char(struct layer_t *layer, Color color, int x0, int y0, char ch);
 void draw_string(struct layer_t *layer, Color color, int x0, int y0, const char *s);
 struct layer_t *make_window(int width, int height, const char *title);
+void redraw_window_title(struct layer_t *layer, const char *title, Color bgcolor);
 void draw_textbox(struct layer_t *layer, int x0, int y0, int width, int height,
                   Color bg);
 
