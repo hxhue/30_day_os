@@ -30,7 +30,7 @@ static int kernel_schedule_count_down = KERNEL_SCHEDULE_MAX;
 
 typedef struct task_mgr_t {
   list_t queues[SCHEDULER_QUEUE_NUM]; // linked-lists of process_t *
-  tree_t process_tree;     // tree of process_t
+  tree_t process_tree;                // tree of process_t
 } task_mgr_t;
 
 task_mgr_t g_task_mgr;

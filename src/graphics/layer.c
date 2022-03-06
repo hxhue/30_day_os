@@ -194,8 +194,8 @@ void layer_move_to(layer_t *layer, i32 x, i32 y) {
 // Requirements: x >= 0, x < 65536, y >= 0, y < 65536
 void layer_move_by(layer_t *layer, i32 x, i32 y) {
   xassert(layer);
-  x = clamp_i32(layer->x + x, 0, 65535);
-  y = clamp_i32(layer->y + y, 0, 65535);
+  x = clamp_i32(layer->x + x, -layer->width, g_boot_info.width);
+  y = clamp_i32(layer->y + y, -layer->height, g_boot_info.height);
   if (x || y) {
     layer_move_to(layer, x, y);
   }

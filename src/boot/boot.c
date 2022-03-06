@@ -78,6 +78,7 @@ void task_b_main() {
         if (drag_mode) {
           layer_move_by(msg.layer, msg.mx, msg.my);
           layer_bring_to_front(msg.layer);
+          // xprintf("Console move by: (%d, %d)\n", msg.mx, msg.my);
         }
 
         last_msg = msg;
