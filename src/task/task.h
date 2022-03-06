@@ -49,7 +49,7 @@ struct process_t {
 	char name[32];
 	TSS32_t tss;
 	queue_t mouse_msg_queue; // queue of decoded_mouse_msg_t
-	queue_t layer_msg_queue; // queue of layer_msg_t
+	// queue_t layer_msg_queue; // queue of layer_msg_t
 };
 
 typedef list_node_t process_node_t;

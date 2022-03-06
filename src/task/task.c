@@ -104,8 +104,8 @@ process_t *process_new(int priority, const char *name) {
   p->events = 0;
   queue_init(&p->mouse_msg_queue, sizeof(decoded_mouse_msg_t), 256, alloc_mem2,
              reclaim_mem2);
-  queue_init(&p->layer_msg_queue, sizeof(layer_msg_t), 256, alloc_mem2,
-             reclaim_mem2);
+  // queue_init(&p->layer_msg_queue, sizeof(layer_msg_t), 256, alloc_mem2,
+  //            reclaim_mem2);
   // Priority: 0: Urgent, 1: New, 2: Old.
   p->priority = SCHEDULER_QUEUE_NEW;
   p->state = PROCSTATE_READY;

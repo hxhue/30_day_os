@@ -269,27 +269,18 @@ void layers_receive_mouse_event(int x, int y, decoded_mouse_msg_t msg) {
     }
   }
 
-  if (receiver) {
+  if (receiver && msg.button[0]) {
     // Check if focus will change.
-    if (msg.button[0]) {
-      if (focused_layer != receiver) {
-        // The focused layer loses focus.
-        if (focused_layer) {
-          process_t *proc = get_proc_from_node(focused_layer->proc_node);
-          layer_msg_t layer_msg = {.focus = 0, .layer = focused_layer};
-          queue_push(&proc->layer_msg_queue, &layer_msg);
-          process_set_urgent(focused_layer->proc_node);
-        }
-        // The receiver layer gains focus.
-        layer_msg_t layer_msg = {.focus = 1, .layer = receiver};
-        process_t *receiver_proc = get_proc_from_node(receiver->proc_node);
-        queue_push(&receiver_proc->layer_msg_queue, &layer_msg);
-        focused_layer = receiver;
-        process_set_urgent(receiver->proc_node);
-        // process_try_preempt(); // Useless when dragging is laggy
-        // xprintf("focused_layer=%d\n", receiver);
-      }
+    if (focused_layer && focused_layer != receiver) {
+      // The focused layer loses focus.
+      process_t *proc = get_proc_from_node(focused_layer->proc_node);
+      decoded_mouse_msg_t disconnect_msg = {0};
+      disconnect_msg.control = MOUSE_EVENT_LOSE_CONTROL;
+      queue_push(&proc->mouse_msg_queue, &disconnect_msg);
+      process_set_urgent(focused_layer->proc_node);
     }
+    // The receiver gains focus.
+    focused_layer = receiver;
   }
 
   // Send mouse message to process of the focused layer. If focus didn't change,

@@ -12,8 +12,8 @@ typedef struct mouse_msg_t {
   u8 buf[3];
 } mouse_msg_t;
 
-// #define MOUSE_EVENT_GET_CONTROL  1
-// #define MOUSE_EVENT_LOSE_CONTROL 2
+#define MOUSE_EVENT_GET_CONTROL  1 // Not used.
+#define MOUSE_EVENT_LOSE_CONTROL 2
 
 struct layer_t;
 
