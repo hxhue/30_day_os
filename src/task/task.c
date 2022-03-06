@@ -132,17 +132,19 @@ list_node_t *process_start(process_t *proc) {
   return list_push_back(list, node);
 }
 
-void process_enqueue(list_node_t *pnode) {
-  process_t *proc = get_proc_from_node(pnode);
-  list_t *list = &g_task_mgr.queues[proc->priority];
-  list_push_back(list, pnode);
-}
+// void process_enqueue(list_node_t *pnode) {
+//   process_t *proc = get_proc_from_node(pnode);
+//   list_t *list = &g_task_mgr.queues[proc->priority];
+//   list_push_back(list, pnode);
+// }
 
 // Only increment the priority (make it less prior) of the next process. Current
 // process is unmodified. (So any modifications on current process should be
-// done before calling process_switch().)
-// Returns 1 when process switch happens, 0 when it does not.
-int process_switch() {
+// done before calling process_switch().) If preempt is 1, then this is called
+// in process_try_preempt() in which case the current process is pushed to the
+// front (instead of the back) of the queue. Returns 1 when process switch
+// happens, 0 when it does not.
+int process_switch(int preempt) {
   // xprintf("%s\n", __func__);
   process_t *p = NULL;
 
@@ -161,7 +163,13 @@ int process_switch() {
 
       process_t *curp = get_proc_from_node(current_proc_node);
       curp->state = PROCSTATE_READY;
-      process_enqueue(current_proc_node);
+      
+      process_t *proc = get_proc_from_node(current_proc_node);
+      list_t *list = &g_task_mgr.queues[proc->priority];
+      if (preempt)
+        list_push_front(list, current_proc_node);
+      else
+        list_push_back(list, current_proc_node);
       
       current_proc_node = node;
       break;
@@ -181,7 +189,7 @@ void process_try_preempt() {
   // Check if current task is an urgent task. If not, interrupt it.
   process_t *current_proc = get_proc_from_node(current_proc_node);
   if (!(current_proc->flags & PROCFLAG_URGENT)) {
-    process_switch();
+    process_switch(1);
   }
 }
 
@@ -199,15 +207,14 @@ void process_count_time_slice() {
   if (ts_count_stop_flag) {
     return;
   }
-
   process_t *p = get_proc_from_node(current_proc_node);
   // xprintf("%s\n", __func__);
   if (p->flags & PROCFLAG_URGENT) {
     p->flags &= ~(PROCFLAG_URGENT);
-    process_switch();
+    process_switch(0);
   } else if (--p->tsnow <= 0) {
     p->tsnow = p->tsmax;
-    process_switch();
+    process_switch(0);
   }
 }
 
@@ -215,7 +222,7 @@ void process_count_time_slice() {
 static inline void process_yield_immediate() {
   process_t *p = get_proc_from_node(current_proc_node);
   p->tsnow = p->tsmax;
-  if (!process_switch()) {
+  if (!process_switch(0)) {
     asm_hlt();
   }
 }

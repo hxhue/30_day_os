@@ -82,9 +82,10 @@ process_t *get_proc_from_node(process_node_t *node);
 void process_register_event(process_node_t *pnode, int eventno);
 void process_unregister_event(process_node_t *pnode, int eventno);
 
-int  process_switch();
-void process_try_preempt(); // Calls process_switch() when current process is
-                            // not urgent.
+int  process_switch(int preempt);
+
+// Calls process_switch() when current process is not urgent.
+void process_try_preempt();
 
 // Used only in kernel process. Experimental.
 void stop_ts_count();
