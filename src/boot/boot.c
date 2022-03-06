@@ -53,16 +53,15 @@ void task_b_main() {
         decoded_mouse_msg_t msg;
         queue_pop(q, &msg);
 
-        int in_drag_region = 0;
+        int in_region = 0;
         if (msg.button[0] && msg.layer) {
           int x0 = msg.layer->x; 
           int y0 = msg.layer->y; 
           int x1 = x0 + msg.layer->width;
           int y1 = y0 + msg.layer->height;
-          in_drag_region =
-              msg.x >= x0 && msg.x < x1 && msg.y >= y0 && msg.y < y1;
+          in_region = msg.x >= x0 && msg.x < x1 && msg.y >= y0 && msg.y < y1;
         }
-        if (!last_msg.button[0] && msg.button[0] && in_drag_region) {
+        if (!last_msg.button[0] && msg.button[0] && in_region) {
           drag_mode = 1;
         } else if (!msg.button[0]) {
           drag_mode = 0;
@@ -75,7 +74,6 @@ void task_b_main() {
         last_msg = msg;
       }
     }
-
     asm_hlt();
   }
 }
@@ -102,16 +100,15 @@ void task_c_main() {
         decoded_mouse_msg_t msg;
         queue_pop(q, &msg);
 
-        int in_drag_region = 0;
+        int in_region = 0;
         if (msg.button[0] && msg.layer) {
           int x0 = msg.layer->x; 
           int y0 = msg.layer->y; 
           int x1 = x0 + msg.layer->width;
           int y1 = y0 + msg.layer->height;
-          in_drag_region =
-              msg.x >= x0 && msg.x < x1 && msg.y >= y0 && msg.y < y1;
+          in_region = msg.x >= x0 && msg.x < x1 && msg.y >= y0 && msg.y < y1;
         }
-        if (!last_msg.button[0] && msg.button[0] && in_drag_region) {
+        if (!last_msg.button[0] && msg.button[0] && in_region) {
           drag_mode = 1;
         } else if (!msg.button[0]) {
           drag_mode = 0;
@@ -149,7 +146,7 @@ void startup(void) {
   // Set color and cursor; draw a background.
   init_display();
   
-  void *task_b_esp = alloc_mem_4k(64 * 1024) + 64 * 1024;
+  void *task_b_esp = (char *)alloc_mem_4k(64 * 1024) + 64 * 1024;
   process_t *pb = process_new(6, "InputBox2");
   pb->tss.eip = (int)&task_b_main;
   pb->tss.esp = (int)task_b_esp;
@@ -161,7 +158,7 @@ void startup(void) {
   pb->tss.gs = 1 * 8;
   process_start(pb);
 
-  void *task_c_esp = alloc_mem_4k(64 * 1024) + 64 * 1024;
+  void *task_c_esp = (char *)alloc_mem_4k(64 * 1024) + 64 * 1024;
   process_t *pc = process_new(6, "InputBox");
   pc->tss.eip = (int)&task_c_main;
   pc->tss.esp = (int)task_c_esp;
