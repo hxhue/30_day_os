@@ -114,7 +114,7 @@ layer_t *layer_new(process_node_t *pnode, int width, int height, int x, int y,
     layer = node_alloc_get(&layerctl.layer_info_alloc);
     if (!layer) break;
     *layer = (layer_t) {
-      .focusable = 1,
+      // .focusable = 1,
       .width = width,
       .height = height,
       .x = x,
@@ -271,7 +271,7 @@ void layers_receive_mouse_event(int x, int y, decoded_mouse_msg_t msg) {
 
   if (receiver) {
     // Check if focus will change.
-    if (msg.button[0] && receiver->focusable) {
+    if (msg.button[0]) {
       if (focused_layer != receiver) {
         // The focused layer loses focus.
         if (focused_layer) {
@@ -289,9 +289,6 @@ void layers_receive_mouse_event(int x, int y, decoded_mouse_msg_t msg) {
         // process_try_preempt(); // Useless when dragging is laggy
         // xprintf("focused_layer=%d\n", receiver);
       }
-
-      // TODO: move the logic into that of the newly focused layer
-      // layer_bring_to_front(receiver); 
     }
   }
 

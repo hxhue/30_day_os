@@ -26,14 +26,14 @@ void event_loop();
 enum EventNo {
 	EVENTNO_TIMER      = 0,
 	EVENTNO_KEYBOARD   = 1,
-  EVENTNO_FOCUS      = 2,
+  // EVENTNO_FOCUS      = 2,
 	EVENTNO_MOUSE      = 12,
 };
 
 enum EventBit {
 	EVENTBIT_TIMER    = (1 << 0),
 	EVENTBIT_KEYBOARD = (1 << 1),
-  EVENTBIT_FOCUS    = (1 << 2),
+  // EVENTBIT_FOCUS    = (1 << 2),
 	EVENTBIT_MOUSE    = (1 << 12),
 };
 

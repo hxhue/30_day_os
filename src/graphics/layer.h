@@ -12,7 +12,7 @@
 typedef struct layer_t layer_t;
 
 struct layer_t {
-  u8 focusable;         // Default: 1
+  // u8 focusable;         // Default: 1
   int width, height;    // Size
   int x, y;             // Position (top left)
   int rank;             // "rank" == 0 means invisible,

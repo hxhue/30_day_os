@@ -61,7 +61,7 @@ void init_background() {
   sprintf(buf, "rand: %d", rand());
   draw_string(layer, RGB_WHITE, 0, 96, buf);
 
-  layer->focusable = 0;
+  // layer->focusable = 0;
   layer_set_rank(layer, 1);
 
   g_background_layer = layer;
@@ -368,7 +368,7 @@ void emit_draw_event(int x0, int y0, int x1, int y1, u8 flags) {
     drawing_size += (x1 - x0) * (y1 - y0);
     if (drawing_size > g_boot_info.width * g_boot_info.height) {
       merge_flag = 1;
-      xprintf("M1");
+      // xprintf("M1");
     }
   }
   if (merge_flag) {
