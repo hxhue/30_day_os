@@ -18,7 +18,7 @@
 #include <support/debug.h>
 #include <stdlib.h>
 
-#define MOUSE_LAYER_RANK 128
+#define MOUSE_LAYER_RANK 0x7fffffff
 
 layer_t *g_mouse_layer;
 static layer_t *g_background_layer;
@@ -243,7 +243,7 @@ void init_cursor() {
                             g_boot_info.width / 2, g_boot_info.height / 2,
                             &cursor_image[0][0]);
   xassert(g_mouse_layer);
-  layer_set_rank_no_bound(g_mouse_layer, MOUSE_LAYER_RANK);
+  layer_set_rank_no_update(g_mouse_layer, MOUSE_LAYER_RANK);
 }
 
 /* Registers 16 predefined rgb colors by writing the first color index, and then
@@ -368,7 +368,7 @@ void emit_draw_event(int x0, int y0, int x1, int y1, u8 flags) {
     drawing_size += (x1 - x0) * (y1 - y0);
     if (drawing_size > g_boot_info.width * g_boot_info.height) {
       merge_flag = 1;
-      // xprintf("M1");
+      xprintf("M1");
     }
   }
   if (merge_flag) {

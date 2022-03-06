@@ -32,9 +32,9 @@ layer_t *window_layer2;
 // }
 
 void task_b_main() {
-  window_layer2 = make_window(160, 52, "Inputbox2");
+  window_layer2 = make_window(16 + 640, 28 + 9 + 384, "Console");
   layer_move_to(window_layer2, 260, 130);
-  draw_textbox(window_layer2, 8, 28, 144, 16, RGB_WHITE);
+  draw_textbox(window_layer2, 8, 28, 640, 384, RGB_BLACK);
   layer_bring_to_front(window_layer2);
 
   // Register mouse event
@@ -69,6 +69,7 @@ void task_b_main() {
 
         if (drag_mode) {
           layer_move_by(msg.layer, msg.mx, msg.my);
+          layer_bring_to_front(msg.layer);
         }
 
         last_msg = msg;
@@ -116,6 +117,7 @@ void task_c_main() {
 
         if (drag_mode) {
           layer_move_by(msg.layer, msg.mx, msg.my);
+          layer_bring_to_front(msg.layer);
         }
 
         last_msg = msg;
@@ -128,6 +130,10 @@ void task_c_main() {
 
 void startup(void) {
   g_boot_info = *(boot_info_t *)0x0ff0;
+
+  xprintf("g_boot_info: width:%d, height:%d\n", g_boot_info.width,
+          g_boot_info.height);
+
   init_gdt();
   init_interrupt();
   init_mem_mgr();

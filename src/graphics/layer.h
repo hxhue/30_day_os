@@ -13,9 +13,9 @@ typedef struct layer_t layer_t;
 
 struct layer_t {
   u8 focusable;         // Default: 1
-  u16 width, height;    // Size
-  u16 x, y;             // Position (top left)
-  i16 rank;             // "rank" == 0 means invisible,
+  int width, height;    // Size
+  int x, y;             // Position (top left)
+  int rank;             // "rank" == 0 means invisible,
                         // because background's rank is 1
   u8 *buf;
   process_node_t *proc_node;
@@ -40,10 +40,10 @@ layer_t *layer_new(process_node_t *pnode, int width, int height, int x, int y,
 
 // Set rank of the layer so it can be drawn. "rank" == 0 means invisible.
 // Larger rank means being drawn later.
-void layer_set_rank(layer_t *layer, i16 rank);
+void layer_set_rank(layer_t *layer, int rank);
 
 // Even unsafer than layer_set_rank.
-void layer_set_rank_no_bound(layer_t *layer, i16 rank);
+void layer_set_rank_no_update(layer_t *layer, int rank);
 
 // Set the max rank possible for given layer.
 void layer_bring_to_front(layer_t *layer);

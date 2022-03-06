@@ -10,8 +10,6 @@
 #include <event/keyboard.h>
 #include <boot/def.h>
 
-extern layer_t *g_mouse_layer;
-
 void init_mouse() {
   wait_kbdc_ready();
   // Send command: transfer data to mouse

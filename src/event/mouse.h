@@ -27,6 +27,7 @@ typedef struct decoded_mouse_msg_t {
 } decoded_mouse_msg_t;
 
 extern event_queue_t g_mouse_event_queue;
+extern struct layer_t *g_mouse_layer;
 
 // void handle_event_mouse(unsigned data);
 void emit_mouse_event(mouse_msg_t msg);

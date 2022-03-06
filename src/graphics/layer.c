@@ -141,11 +141,16 @@ layer_t *layer_new(process_node_t *pnode, int width, int height, int x, int y,
   return layer;
 }
 
-void layer_set_rank(layer_t *layer, i16 rank) {
-  layer_set_rank_no_bound(layer, clamp_i16(rank, 0, LAYER_RANK_MAX));
+static int max_layer_rank = 0;
+
+void layer_set_rank(layer_t *layer, int rank) {
+  layer_set_rank_no_update(layer, rank);
+  if (rank > max_layer_rank) {
+    max_layer_rank = rank;
+  }
 }
 
-void layer_set_rank_no_bound(layer_t *layer, i16 rank) {
+void layer_set_rank_no_update(layer_t *layer, int rank) {
   xassert(layer);
   void *key = tree_find(&layerctl.layers, &layer);
 
@@ -164,7 +169,9 @@ void layer_set_rank_no_bound(layer_t *layer, i16 rank) {
 }
 
 void layer_bring_to_front(layer_t *layer) {
-  layer_set_rank(layer, LAYER_RANK_MAX);
+  if (layer->rank != max_layer_rank) {
+    layer_set_rank(layer, max_layer_rank + 1);
+  }
 }
 
 // Changes the position of the layer.
@@ -244,15 +251,14 @@ void layers_receive_mouse_event(int x, int y, decoded_mouse_msg_t msg) {
   // track the last layer.
   int lbutton_was_down = last_mouse_msg.button[0];
   if (lbutton_was_down && last_mouse_msg.layer) {
-    receiver = last_mouse_msg.layer;  
+    receiver = last_mouse_msg.layer;
   }
 
   if (!receiver) {
     for (void *key = tree_largest_key(&layerctl.layers); key; 
         key = tree_prev_key(&layerctl.layers, key)) {
       layer_t *layer = *(layer_t **)key;
-      // Skip mouse layer itself and whatever layers unclickable.
-      if (layer->rank > LAYER_RANK_MAX) {
+      if (layer == g_mouse_layer) { // Skip mouse layer itself.
         continue;
       }
       if (x >= layer->x && x < (layer->x + layer->width) && 
@@ -285,7 +291,7 @@ void layers_receive_mouse_event(int x, int y, decoded_mouse_msg_t msg) {
       }
 
       // TODO: move the logic into that of the newly focused layer
-      layer_bring_to_front(receiver); 
+      // layer_bring_to_front(receiver); 
     }
   }
 
@@ -305,9 +311,9 @@ void layers_receive_mouse_event(int x, int y, decoded_mouse_msg_t msg) {
 
 int layer_free(layer_t *layer) {
   // Save information before free
-  u16 x = layer->x, y = layer->y;
-  u16 w = layer->width, h = layer->height;
-  i16 rank = layer->rank;
+  int x = layer->x, y = layer->y;
+  int w = layer->width, h = layer->height;
+  int rank = layer->rank;
   if (tree_remove(&layerctl.layers, &layer) < 0) {
     return -1;
   }

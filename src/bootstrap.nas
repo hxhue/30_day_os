@@ -11,7 +11,7 @@ SCRNX	    EQU  0x0ff4    ; 解像度のX
 SCRNY	    EQU  0x0ff6    ; 解像度のY
 VRAM	    EQU  0x0ff8    ; グラフィックバッファの開始番地
 
-VBE_MODE  EQU  0x0103    ; 0x105: 1024 * 768 * 8 bit
+VBE_MODE  EQU  0x0105    ; 0x105: 1024 * 768 * 8 bit
 
 		ORG		0xc200        ; このプログラムがどこに読み込まれるのか
 
