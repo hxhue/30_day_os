@@ -24,6 +24,9 @@
 #define SCHEDULER_QUEUE_NEW     1
 #define SCHEDULER_QUEUE_OLD     2
 #define SCHEDULER_QUEUE_SIZE 1024
+#define KERNEL_SCHEDULE_MAX    15
+static int ts_count_stop_flag = 0;
+static int kernel_schedule_count_down = KERNEL_SCHEDULE_MAX;
 
 typedef struct task_mgr_t {
   list_t queues[SCHEDULER_QUEUE_NUM]; // linked-lists of process_t *
@@ -132,6 +135,7 @@ list_node_t *process_start(process_t *proc) {
   return list_push_back(list, node);
 }
 
+
 // void process_enqueue(list_node_t *pnode) {
 //   process_t *proc = get_proc_from_node(pnode);
 //   list_t *list = &g_task_mgr.queues[proc->priority];
@@ -171,6 +175,10 @@ int process_switch(int preempt) {
       else
         list_push_back(list, current_proc_node);
       
+      if (current_proc_node == kernel_proc_node) {
+        kernel_schedule_count_down = KERNEL_SCHEDULE_MAX;
+      }
+
       current_proc_node = node;
       break;
     }
@@ -193,7 +201,6 @@ void process_try_preempt() {
   }
 }
 
-static int ts_count_stop_flag = 0;
 
 void stop_ts_count() {
   ts_count_stop_flag = 1;
@@ -209,7 +216,11 @@ void process_count_time_slice() {
   }
   process_t *p = get_proc_from_node(current_proc_node);
   // xprintf("%s\n", __func__);
-  if (p->flags & PROCFLAG_URGENT) {
+  if (--kernel_schedule_count_down <= 0) {
+    process_set_urgent(kernel_proc_node);
+    process_try_preempt();
+    kernel_schedule_count_down = KERNEL_SCHEDULE_MAX;
+  } else if (p->flags & PROCFLAG_URGENT) {
     p->flags &= ~(PROCFLAG_URGENT);
     process_switch(0);
   } else if (--p->tsnow <= 0) {

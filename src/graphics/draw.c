@@ -418,10 +418,16 @@ void draw_event_queue_consume() {
   xassert(y1 >= y0);
   drawing_size -= (x1 - x0) * (y1 - y0);
   xassert(drawing_size >= 0);
+
+  // TODO: Experimenting
+  drawing_size = 0;
+  queue_clear(&draw_msg_queue);
   
   asm_sti();
 
-  layers_draw_all(x0, y0, x1, y1, msg.flags);
+  // TODO: Experimenting
+  // layers_draw_all(x0, y0, x1, y1, msg.flags);
+  layers_draw_all(0, 0, g_boot_info.width, g_boot_info.height, 0);
 }
 
 event_queue_t g_draw_event_queue = {
