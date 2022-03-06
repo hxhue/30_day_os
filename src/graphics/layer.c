@@ -212,7 +212,10 @@ void layers_draw_all(int x0, int y0, int x1, int y1, u8 flags) {
   x1 = clamp_i32(x1, 0, winw);
   y1 = clamp_i32(y1, 0, winh);
 
-  // xprintf("Drawing 0X%p:(%d,%d,%d,%d)\n", vram, x0, y0, x1, y1);
+  stop_ts_count();
+
+  // if ((y1 - y0) * (x1 - x0) > 12 * 21)
+  //   xprintf("Drawing 0X%p:(%d,%d,%d,%d)\n", vram, x0, y0, x1, y1);
 
   void *key;
   for (key = tree_smallest_key(&layerctl.layers); key;
@@ -238,6 +241,8 @@ void layers_draw_all(int x0, int y0, int x1, int y1, u8 flags) {
   if (!(flags & DRAW_GROUP_FLAG)) {
     memcpy((void *)g_boot_info.vram_addr, vram, winh * winw);
   }
+
+  resume_ts_count();
 }
 
 static decoded_mouse_msg_t last_mouse_msg = {0};

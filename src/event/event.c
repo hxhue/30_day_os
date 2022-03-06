@@ -45,7 +45,7 @@ void event_loop() {
     
     if (queue_index < 0) {
       asm_sti();
-      // resume_ts_count();
+      // resume_ts_count(); // Put this into drawing functions
       process_yield();
       continue;
     }
