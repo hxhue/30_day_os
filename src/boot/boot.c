@@ -21,7 +21,6 @@ boot_info_t g_boot_info;
 
 // Temporary
 layer_t *window_layer1;
-layer_t *window_layer2;
 
 // Temporary
 // static void window_random_square() {
@@ -32,7 +31,7 @@ layer_t *window_layer2;
 // }
 
 void task_b_main() {
-  window_layer2 = make_window(16 + 640, 28 + 9 + 384, "Console");
+  layer_t *window_layer2 = make_window(16 + 640, 28 + 9 + 384, "Console");
   layer_move_to(window_layer2, 260, 130);
   draw_textbox(window_layer2, 8, 28, 640, 384, RGB_BLACK);
   layer_bring_to_front(window_layer2);
@@ -61,15 +60,22 @@ void task_b_main() {
           redraw_window_title(msg.layer, "Console", RGB_CYAN_DARK);
         }
 
-        int in_region = 0;
+        int in_title_bar = 0, in_window = 0;
         if (msg.button[0] && msg.layer) {
           int x0 = msg.layer->x; 
           int y0 = msg.layer->y; 
           int x1 = x0 + msg.layer->width;
-          int y1 = y0 + msg.layer->height;
-          in_region = msg.x >= x0 && msg.x < x1 && msg.y >= y0 && msg.y < y1;
+          int y1 = y0 + msg.layer->height; 
+          int y2 = y0 + 21; // Window title bar height: 21
+          in_window = msg.x >= x0 && msg.x < x1 && msg.y >= y0 && msg.y < y1;
+          in_title_bar = msg.x >= x0 && msg.x < x1 && msg.y >= y0 && msg.y < y2;
         }
-        if (!last_msg.button[0] && msg.button[0] && in_region) {
+
+        if (!last_msg.button[0] && msg.button[0] && in_window) {
+          layer_bring_to_front(msg.layer);
+        }
+
+        if (!last_msg.button[0] && msg.button[0] && in_title_bar) {
           drag_mode = 1;
         } else if (!msg.button[0]) {
           drag_mode = 0;
@@ -77,7 +83,6 @@ void task_b_main() {
 
         if (drag_mode) {
           layer_move_by(msg.layer, msg.mx, msg.my);
-          layer_bring_to_front(msg.layer);
           // xprintf("Console move by: (%d, %d)\n", msg.mx, msg.my);
         }
 
@@ -120,15 +125,22 @@ void task_c_main() {
           redraw_window_title(msg.layer, "InpuxBox", RGB_CYAN_DARK);
         }
 
-        int in_region = 0;
+        int in_title_bar = 0, in_window = 0;
         if (msg.button[0] && msg.layer) {
           int x0 = msg.layer->x; 
           int y0 = msg.layer->y; 
           int x1 = x0 + msg.layer->width;
-          int y1 = y0 + msg.layer->height;
-          in_region = msg.x >= x0 && msg.x < x1 && msg.y >= y0 && msg.y < y1;
+          int y1 = y0 + msg.layer->height; 
+          int y2 = y0 + 21; // Window title bar height: 21
+          in_window = msg.x >= x0 && msg.x < x1 && msg.y >= y0 && msg.y < y1;
+          in_title_bar = msg.x >= x0 && msg.x < x1 && msg.y >= y0 && msg.y < y2;
         }
-        if (!last_msg.button[0] && msg.button[0] && in_region) {
+
+        if (!last_msg.button[0] && msg.button[0] && in_window) {
+          layer_bring_to_front(msg.layer);
+        }
+
+        if (!last_msg.button[0] && msg.button[0] && in_title_bar) {
           drag_mode = 1;
         } else if (!msg.button[0]) {
           drag_mode = 0;
@@ -136,7 +148,7 @@ void task_c_main() {
 
         if (drag_mode) {
           layer_move_by(msg.layer, msg.mx, msg.my);
-          layer_bring_to_front(msg.layer);
+          // xprintf("Console move by: (%d, %d)\n", msg.mx, msg.my);
         }
 
         last_msg = msg;
