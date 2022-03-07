@@ -370,7 +370,7 @@ void emit_draw_event(int x0, int y0, int x1, int y1, u8 flags) {
   draw_msg_t msg = {{x0, y0, x1, y1}, flags};
   int merge_flag = 0;
 
-  u32 eflags = asm_load_eflags(); // Bit 9 contains interrupt permission.
+  // u32 eflags = asm_load_eflags(); // Bit 9 contains interrupt permission.
   asm_cli();                      // Clear interrupt permission.
 
   int status = draw_queue_push(&msg);
@@ -393,7 +393,8 @@ void emit_draw_event(int x0, int y0, int x1, int y1, u8 flags) {
 
   // u32 size = queue_size(&draw_msg_queue);
   
-  asm_store_eflags(eflags);
+  // asm_store_eflags(eflags);
+  asm_sti();
 
   // This is laggy...
   // if (size > DRAW_MSG_QUEUE_URGENT_THRESHOLD) {

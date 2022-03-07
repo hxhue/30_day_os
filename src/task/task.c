@@ -1,23 +1,20 @@
-#include "support/tree.h"
-#include "task/task.h"
-#include "boot/def.h"
-#include "boot/gdt.h"
-#include "event/event.h"
-#include "event/mouse.h"
-#include "graphics/layer.h"
-#include "memory/memory.h"
-#include "support/queue.h"
-#include "stddef.h"
-#include "support/asm.h"
-#include "support/debug.h"
-#include "support/list.h"
-#include "support/type.h"
-#include <string.h>
-#include <task/task.h>
-#include <support/tree.h>
-#include <support/queue.h>
-#include <stdlib.h>
 #include <boot/def.h>
+#include <boot/gdt.h>
+#include <event/event.h>
+#include <event/mouse.h>
+#include <event/timer.h>
+#include <graphics/layer.h>
+#include <memory/memory.h>
+#include <stddef.h>
+#include <stdlib.h>
+#include <string.h>
+#include <support/asm.h>
+#include <support/debug.h>
+#include <support/list.h>
+#include <support/queue.h>
+#include <support/tree.h>
+#include <support/type.h>
+#include <task/task.h>
 
 #define SCHEDULER_QUEUE_NUM     3
 #define SCHEDULER_QUEUE_URGENT  0
@@ -109,6 +106,7 @@ process_t *process_new(int priority, const char *name) {
              reclaim_mem2);
   // queue_init(&p->layer_msg_queue, sizeof(layer_msg_t), 256, alloc_mem2,
   //            reclaim_mem2);
+  queue_init(&p->timer_msg_queue, sizeof(int), 64, alloc_mem2, reclaim_mem2);
   // Priority: 0: Urgent, 1: New, 2: Old.
   p->priority = SCHEDULER_QUEUE_NEW;
   p->state = PROCSTATE_READY;
@@ -152,8 +150,8 @@ int process_switch(int preempt) {
   // xprintf("%s\n", __func__);
   process_t *p = NULL;
 
-  u32 eflags = asm_load_eflags();
-  asm_cli();
+  // u32 eflags = asm_load_eflags();
+  // asm_cli();
 
   for (int i = 0; i < SCHEDULER_QUEUE_NUM; ++i) {
     list_t *list = &g_task_mgr.queues[i];
@@ -184,7 +182,7 @@ int process_switch(int preempt) {
     }
   }
 
-  asm_store_eflags(eflags);
+  // asm_store_eflags(eflags);
 
   if (p) {
     asm_farjmp(0, p->sel * 8);
@@ -230,25 +228,12 @@ void process_count_time_slice() {
 }
 
 // Voluntarily give up time slices immediately.
-static inline void process_yield_immediate() {
+void process_yield() {
   process_t *p = get_proc_from_node(current_proc_node);
   p->tsnow = p->tsmax;
   if (!process_switch(0)) {
     asm_hlt();
   }
-}
-
-// Voluntarily give up time slices. Process switch will happen at the next timer
-// interrupt.
-static inline void process_yield_aligned() {
-  process_t *p = get_proc_from_node(current_proc_node);
-  p->tsnow = 0;
-  asm_hlt();
-}
-
-void process_yield() {
-  process_yield_immediate();
-  // process_yield_aligned();
 }
 
 int process_set_urgent(process_node_t *pnode) {
@@ -260,7 +245,7 @@ int process_set_urgent(process_node_t *pnode) {
   if (proc->state == PROCSTATE_READY && !(proc->flags & PROCFLAG_URGENT)) {
     xassert(pnode != current_proc_node);
 
-    u32 eflags = asm_load_eflags();
+    // u32 eflags = asm_load_eflags();
     asm_cli();
 
     proc->flags |= PROCFLAG_URGENT;
@@ -269,14 +254,15 @@ int process_set_urgent(process_node_t *pnode) {
     list_t *urgent_list = &g_task_mgr.queues[SCHEDULER_QUEUE_URGENT];
     list_push_back(urgent_list, pnode);
 
-    asm_store_eflags(eflags);
+    // asm_store_eflags(eflags);
+    asm_sti();
 
     return 1;
   }
   return 0;
 }
 
-void process_register_event(process_node_t *pnode, int eventno) {
+void process_event_listen(process_node_t *pnode, int eventno) {
   if (eventno < 0 || eventno >= 16) {
     return;
   }
@@ -288,7 +274,7 @@ void process_register_event(process_node_t *pnode, int eventno) {
   proc->event_mask |= bit;
 }
 
-void process_unregister_event(process_node_t *pnode, int eventno) {
+void process_event_stop_listening(process_node_t *pnode, int eventno) {
   if (eventno < 0 || eventno >= 16) {
     return;
   }

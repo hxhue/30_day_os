@@ -59,9 +59,23 @@ void init_pic() {
 // handlers.
 
 void int_handler0x20(u32 esp) {
+  // Turn off timer interrupt
+  // u32 pic0_imr = asm_in8(PIC0_IMR);
+  // pic0_imr &= ~(0x1);
+  // asm_out8(PIC0_IMR, pic0_imr);
+
   asm_out8(PIC0_OCW2, 0x60 + 0x0); /* Accept interrupt 0x0 */
   ++g_counter.count;
+
+  // timer_t timer;
+  // priority_queue_pop(&g_timer_queue, &timer);
+  // queue_push(&get_proc_from_node(timer.pnode)->timer_msg_queue, &timer.data);
+  // process_set_urgent(timer.pnode);
+
   process_count_time_slice();
+
+  // pic0_imr |= 0x1;
+  // asm_out8(PIC0_IMR, pic0_imr);
 }
 
 /* PS/2 keyboard, 0x20 + 1 (kbd) = 0x21. esp is the 32-bit stack register. */

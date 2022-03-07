@@ -49,6 +49,7 @@ struct process_t {
 	char name[32];
 	TSS32_t tss;
 	queue_t mouse_msg_queue; // queue of decoded_mouse_msg_t
+	queue_t timer_msg_queue; // queue of int (data of timer)
 	// queue_t layer_msg_queue; // queue of layer_msg_t
 };
 
@@ -79,8 +80,8 @@ process_t *get_proc_from_node(process_node_t *node);
 // updated with a higher priority (smaller priority field value). For a certain
 // irq packet, not every process which has registered IRQs will receive it.
 // TODO: This may be merged into signals.
-void process_register_event(process_node_t *pnode, int eventno);
-void process_unregister_event(process_node_t *pnode, int eventno);
+void process_event_listen(process_node_t *pnode, int eventno);
+void process_event_stop_listening(process_node_t *pnode, int eventno);
 
 int  process_switch(int preempt);
 

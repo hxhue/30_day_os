@@ -30,14 +30,16 @@ layer_t *window_layer1;
 //   add_timer(20, window_random_square);
 // }
 
-void task_b_main() {
-  layer_t *window_layer2 = make_window(16 + 640, 28 + 9 + 384, "Console");
-  layer_move_to(window_layer2, 260, 130);
-  draw_textbox(window_layer2, 8, 28, 640, 384, RGB_BLACK);
-  layer_bring_to_front(window_layer2);
+void task_console_main() {
+  layer_t *window_console = make_window(16 + 640, 28 + 9 + 384, "Console");
+  layer_move_to(window_console, 260, 130);
+  draw_textbox(window_console, 8, 28, 640, 384, RGB_BLACK);
+  layer_bring_to_front(window_console);
 
+  const int TIMER_DATA_CURSOR_BLINK = 1;
+  add_timer(500, current_proc_node, TIMER_DATA_CURSOR_BLINK);
   // Register mouse event
-  process_register_event(current_proc_node, EVENTNO_MOUSE);
+  process_event_listen(current_proc_node, EVENTNO_MOUSE);
   int drag_mode = 0;
   int has_focus = 0;
   decoded_mouse_msg_t last_msg = {0};
@@ -89,6 +91,16 @@ void task_b_main() {
         last_msg = msg;
       }
     }
+
+    while (!queue_is_empty(&proc->timer_msg_queue)) {
+      int timer_data;
+      queue_pop(&proc->timer_msg_queue, &timer_data);
+      if (timer_data == TIMER_DATA_CURSOR_BLINK) {
+        xprintf("Cursor blink\n\n");
+        add_timer(500, current_proc_node, TIMER_DATA_CURSOR_BLINK);
+      }
+    }
+
     asm_hlt();
   }
 }
@@ -100,7 +112,7 @@ void task_c_main() {
   layer_bring_to_front(window_layer1);
 
   // Register mouse event
-  process_register_event(current_proc_node, EVENTNO_MOUSE);
+  process_event_listen(current_proc_node, EVENTNO_MOUSE);
   int drag_mode = 0;
   decoded_mouse_msg_t last_msg = {0};
   int has_focus = 0;
@@ -192,7 +204,7 @@ void startup(void) {
   
   void *task_b_esp = (char *)alloc_mem_4k(64 * 1024) + 64 * 1024;
   process_t *pb = process_new(6, "InputBox2");
-  pb->tss.eip = (int)&task_b_main;
+  pb->tss.eip = (int)&task_console_main;
   pb->tss.esp = (int)task_b_esp;
   pb->tss.es = 1 * 8;
   pb->tss.cs = 2 * 8;
