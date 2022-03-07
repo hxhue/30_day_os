@@ -345,8 +345,12 @@ void init_display() {
   init_cursor();     // Cursor layer
 }
 
-queue_t draw_msg_queue; // TODO: make static
+static queue_t draw_msg_queue; // TODO: make static
 static int drawing_size = 0;
+
+int draw_queue_size() {
+  return queue_size(&draw_msg_queue);
+}
 
 #define DRAW_MSG_QUEUE_URGENT_THRESHOLD 256 // Larger than queue size: Disable
 #define DRAW_MSG_QUEUE_SIZE             128
@@ -404,34 +408,66 @@ void emit_draw_event(int x0, int y0, int x1, int y1, u8 flags) {
   // }
 }
 
-int draw_event_queue_is_empty() {
-  return queue_is_empty(&draw_msg_queue);
-}
+// int draw_event_queue_is_empty() {
+//   return queue_is_empty(&draw_msg_queue);
+// }
 
-void draw_event_queue_consume() {
-  draw_msg_t msg;
-  queue_pop(&draw_msg_queue, &msg);
-  int x0 = msg.region.x0;
-  int y0 = msg.region.y0;
-  int x1 = msg.region.x1;
-  int y1 = msg.region.y1;
-  xassert(x1 >= x0);
-  xassert(y1 >= y0);
-  drawing_size -= (x1 - x0) * (y1 - y0);
-  xassert(drawing_size >= 0);
+// void draw_event_queue_consume() {
+//   draw_msg_t msg;
+//   queue_pop(&draw_msg_queue, &msg);
+//   int x0 = msg.region.x0;
+//   int y0 = msg.region.y0;
+//   int x1 = msg.region.x1;
+//   int y1 = msg.region.y1;
+//   xassert(x1 >= x0);
+//   xassert(y1 >= y0);
+//   drawing_size -= (x1 - x0) * (y1 - y0);
+//   xassert(drawing_size >= 0);
 
-  // TODO: Experimenting
-  drawing_size = 0;
-  queue_clear(&draw_msg_queue);
+//   // TODO: Experimenting
+//   drawing_size = 0;
+//   queue_clear(&draw_msg_queue);
   
-  asm_sti();
+//   asm_sti();
 
-  // TODO: Experimenting
-  // layers_draw_all(x0, y0, x1, y1, msg.flags);
-  layers_draw_all(0, 0, g_boot_info.width, g_boot_info.height, 0);
+//   // TODO: Experimenting
+//   // layers_draw_all(x0, y0, x1, y1, msg.flags);
+//   layers_draw_all(0, 0, g_boot_info.width, g_boot_info.height, 0);
+// }
+
+// event_queue_t g_draw_event_queue = {
+//   .empty = draw_event_queue_is_empty,
+//   .consume = draw_event_queue_consume
+// };
+
+void draw_main() {
+  for (;;) {
+    if (queue_is_empty(&draw_msg_queue)) {
+      process_yield();
+    } else {
+      asm_cli();
+
+      draw_msg_t msg;
+      queue_pop(&draw_msg_queue, &msg);
+      int x0 = msg.region.x0;
+      int y0 = msg.region.y0;
+      int x1 = msg.region.x1;
+      int y1 = msg.region.y1;
+      xassert(x1 >= x0);
+      xassert(y1 >= y0);
+      drawing_size -= (x1 - x0) * (y1 - y0);
+      xassert(drawing_size >= 0);
+
+      // TODO: Experimenting
+      drawing_size = 0;
+      queue_clear(&draw_msg_queue);
+      
+      asm_sti();
+
+      // TODO: Experimenting
+      // layers_draw_all(x0, y0, x1, y1, msg.flags);
+      layers_draw_all(0, 0, g_boot_info.width, g_boot_info.height, 0);
+    }
+  }
+  asm_hlt();
 }
-
-event_queue_t g_draw_event_queue = {
-  .empty = draw_event_queue_is_empty,
-  .consume = draw_event_queue_consume
-};

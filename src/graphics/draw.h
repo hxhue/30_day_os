@@ -51,10 +51,11 @@ void redraw_window_title(struct layer_t *layer, const char *title, Color bgcolor
 void draw_textbox(struct layer_t *layer, int x0, int y0, int width, int height,
                   Color bg);
 
-
-extern event_queue_t g_draw_event_queue;
+int draw_queue_size();
 void init_draw_event_queue();
 void emit_draw_event(int x0, int y0, int x1, int y1, u8 flags);
+
+extern void draw_main();
 
 #if (defined(__cplusplus))
 	}

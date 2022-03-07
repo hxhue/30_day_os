@@ -3,6 +3,7 @@
 #include <event/event.h>
 #include <event/mouse.h>
 #include <event/timer.h>
+#include <graphics/draw.h>
 #include <graphics/layer.h>
 #include <memory/memory.h>
 #include <stddef.h>
@@ -21,9 +22,10 @@
 #define SCHEDULER_QUEUE_NEW     1
 #define SCHEDULER_QUEUE_OLD     2
 #define SCHEDULER_QUEUE_SIZE 1024
-#define KERNEL_SCHEDULE_MAX    15
+
+#define DRAW_COUNT_MAX    20
 static int ts_count_stop_flag = 0;
-static int kernel_schedule_count_down = KERNEL_SCHEDULE_MAX;
+static int draw_count_down = DRAW_COUNT_MAX;
 
 typedef struct task_mgr_t {
   list_t queues[SCHEDULER_QUEUE_NUM]; // linked-lists of process_t *
@@ -44,6 +46,7 @@ int pid_cmp(void *a, void *b) {
 
 process_node_t *current_proc_node;
 process_node_t *kernel_proc_node;
+process_node_t *draw_proc_node;
 
 process_t *get_proc_from_node(process_node_t *node) {
   return *(process_t **)list_get_value(node);
@@ -65,6 +68,20 @@ static void init_kernel_proc() {
   asm_load_tr(p->sel * 8);
 }
 
+static void init_draw_proc() {
+  // Create kernel task
+  process_t *p = process_new(9, "draw");
+  p->tss.eip = (int)&draw_main;
+  p->tss.esp = (int)((char *)alloc_mem_4k(64 * 1024) + 64 * 1024);
+  p->tss.es = 1 * 8;
+  p->tss.cs = 2 * 8;
+  p->tss.ss = 1 * 8;
+  p->tss.ds = 1 * 8;
+  p->tss.fs = 1 * 8;
+  p->tss.gs = 1 * 8;
+  draw_proc_node = process_start(p);
+}
+
 void init_task_mgr() {
   tree_init(&g_task_mgr.process_tree, sizeof(process_t), alloc_mem2, 
             reclaim_mem2, process_cmp);
@@ -72,10 +89,11 @@ void init_task_mgr() {
     list_init(&g_task_mgr.queues[i], sizeof(void *), alloc_mem2, reclaim_mem2);
   }
   init_kernel_proc();
+  init_draw_proc();
 }
 
 // TSS: eflags set to 0x00000202, iomap set to 0x40000000, others set to 0.
-// It still needs to be modified.
+// It still needs to be modified. State is set to READY.
 process_t *process_new(int priority, const char *name) {
   static int last_pid = -1;
   process_t *p = NULL;
@@ -174,7 +192,7 @@ int process_switch(int preempt) {
         list_push_back(list, current_proc_node);
       
       if (current_proc_node == kernel_proc_node) {
-        kernel_schedule_count_down = KERNEL_SCHEDULE_MAX;
+        draw_count_down = DRAW_COUNT_MAX;
       }
 
       current_proc_node = node;
@@ -214,10 +232,10 @@ void process_count_time_slice() {
   }
   process_t *p = get_proc_from_node(current_proc_node);
   // xprintf("%s\n", __func__);
-  if (--kernel_schedule_count_down <= 0) {
-    process_set_urgent(kernel_proc_node);
+  if (--draw_count_down <= 0) {
+    process_set_urgent(draw_proc_node);
     process_try_preempt();
-    kernel_schedule_count_down = KERNEL_SCHEDULE_MAX;
+    draw_count_down = DRAW_COUNT_MAX;
   } else if (p->flags & PROCFLAG_URGENT) {
     p->flags &= ~(PROCFLAG_URGENT);
     process_switch(0);

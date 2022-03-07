@@ -16,11 +16,11 @@
 #include <support/type.h>
 #include <support/queue.h>
 
+// Now drawing task is separated.
 static event_queue_t *event_queues[] = {
   &g_mouse_event_queue,
   &g_keyboard_event_queue,
   &g_timer_event_queue,
-  &g_draw_event_queue,
 };
 
 void prepare_event_loop() {

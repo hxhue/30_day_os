@@ -55,6 +55,7 @@ struct process_t {
 
 typedef list_node_t process_node_t;
 extern process_node_t *kernel_proc_node;
+extern process_node_t *draw_proc_node;
 extern process_node_t *current_proc_node;
 
 void init_task_mgr();
