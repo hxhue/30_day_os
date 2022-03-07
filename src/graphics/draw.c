@@ -397,7 +397,7 @@ void emit_draw_event(int x0, int y0, int x1, int y1, u8 flags) {
   asm_sti();
 }
 
-int expriment_drawing_count = 0;
+int experiment_drawing_count = 0;
 
 void draw_main() {
   for (;;) {
@@ -405,9 +405,10 @@ void draw_main() {
     stop_ts_count();
     // asm_cli();
 
-    int size = queue_size(&draw_msg_queue);
+    int size = (int)queue_size(&draw_msg_queue);
     while (size-- > 0) {
       // u64 count = g_counter.count;
+
       draw_msg_t msg;
       queue_pop(&draw_msg_queue, &msg);
       int x0 = msg.region.x0;
@@ -419,16 +420,15 @@ void draw_main() {
       drawing_size -= (x1 - x0) * (y1 - y0);
       xassert(drawing_size >= 0);
 
-      // TODO: Experimenting
-      // drawing_size = 0;
-      // queue_clear(&draw_msg_queue);
-      // layers_draw_all(0, 0, g_boot_info.width, g_boot_info.height, 0);
-
-      layers_draw_all(x0, y0, x1, y1, msg.flags);
+      // TODO: Partial refresh...
+      drawing_size = 0;
+      queue_clear(&draw_msg_queue);
+      layers_draw_all(0, 0, g_boot_info.width, g_boot_info.height, 0);
+      // layers_draw_all(x0, y0, x1, y1, msg.flags);
 
       // xprintf("Draw count: %d\n", g_counter.count - count);
-      // expriment_drawing_count++;
-      // break;
+      // experiment_drawing_count++;
+      break;
     }
     
     // asm_sti();

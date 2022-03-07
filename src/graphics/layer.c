@@ -40,6 +40,7 @@ struct layer_ctl_t {
   node_alloc_t layer_info_alloc; 
 };
 
+static queue_t grouped_drawing_regions;
 static layer_ctl_t layerctl;
 
 // Now we only store a pointer in tree node.
@@ -87,6 +88,7 @@ void init_layer_mgr() {
   mem = alloc_mem_4k(sz);
   xassert(mem);
   node_alloc_init(&layerctl.layer_info_alloc, mem, sz, sizeof(layer_t));
+  queue_init(&grouped_drawing_regions, sizeof(region_t), 32, alloc_mem2, reclaim_mem2);
 }
 
 layer_t *layer_new(process_node_t *pnode, int width, int height, int x, int y,
@@ -201,9 +203,19 @@ void layer_move_by(layer_t *layer, i32 x, i32 y) {
   }
 }
 
+static inline void region_copy(u8 *dest, const u8 *src, int width,
+                               region_t region) {
+  for (int y = region.y0; y < region.y1; ++y) {
+    int offset = y * width;
+    for (int x = region.x0; x < region.x1; ++x) {
+      dest[offset + x] = src[offset + x];
+    }
+  }
+}
+
 // (x0, y0) (Include) -> (x1, y1) (Exclude) is the area on the screen you want
 // to redraw. The coordinates are based on the whole screen, not any of the
-// possibly not-full-sreen layers.
+// possibly not-full-screen layers.
 void layers_draw_all(int x0, int y0, int x1, int y1, u8 flags) {
   i32 winh = g_boot_info.height, winw = g_boot_info.width;
   u8 *vram = layerctl.vram;
@@ -215,8 +227,7 @@ void layers_draw_all(int x0, int y0, int x1, int y1, u8 flags) {
   // if ((y1 - y0) * (x1 - x0) > 12 * 21)
   //   xprintf("Drawing 0X%p:(%d,%d,%d,%d)\n", vram, x0, y0, x1, y1);
 
-  void *key;
-  for (key = tree_smallest_key(&layerctl.layers); key;
+  for (void *key = tree_smallest_key(&layerctl.layers); key;
        key = tree_next_key(&layerctl.layers, key)) {
     layer_t *layer = *(layer_t **)key;
     int maxy = min_i32(layer->height, y1 - layer->y);
@@ -236,16 +247,24 @@ void layers_draw_all(int x0, int y0, int x1, int y1, u8 flags) {
   }
 
   // Copy buffer to vga buffer
-  if (!(flags & DRAW_GROUP_FLAG)) {
-    memcpy((void *)g_boot_info.vram_addr, vram, winh * winw);
-    // u8 *real_vram = (u8 *)g_boot_info.vram_addr;
-    // for (int y = y0; y < y1; ++y) {
-    //   int offset = y * winw;
-    //   for (int x = x0; x < x1; ++x) {
-    //     real_vram[offset + x] = vram[offset + x];
-    //   }
-    // }
-  }
+  memcpy((void *)g_boot_info.vram_addr, vram, winh * winw);
+  // if (flags & DRAW_GROUP_FLAG) {
+  //   region_t region = {x0, y0, x1, y1};
+  //   int status = queue_push(&grouped_drawing_regions, &region);
+  //   if (status < 0) {
+  //     queue_clear(&grouped_drawing_regions);
+  //     memcpy((void *)g_boot_info.vram_addr, vram, winh * winw);
+  //   }
+  // } else {
+  //   u8 *real_vram = (u8 *)g_boot_info.vram_addr;
+  //   region_copy(real_vram, vram, winw, (region_t){x0, y0, x1, y1});
+  //   int size = (int)queue_size(&grouped_drawing_regions);
+  //   while (size-- > 0) {
+  //     region_t region;
+  //     queue_pop(&grouped_drawing_regions, &region);
+  //     region_copy(real_vram, vram, winw, region);
+  //   }
+  // }
 }
 
 static decoded_mouse_msg_t last_mouse_msg = {0};

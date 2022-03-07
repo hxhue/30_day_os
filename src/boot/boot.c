@@ -97,7 +97,7 @@ void task_console_main() {
       queue_pop(&proc->timer_msg_queue, &timer_data);
       if (timer_data == TIMER_DATA_CURSOR_BLINK) {
         extern int expriment_drawing_count;
-        // xprintf("Drawing count: %d\n", expriment_drawing_count);
+        // xprintf("Drawing count: %d\n", experiment_drawing_count);
         add_timer(500, current_proc_node, TIMER_DATA_CURSOR_BLINK);
       }
     }
