@@ -57,6 +57,12 @@ static void inline handle_event_mouse_impl(mouse_msg_t msg) {
 
   if (offset_x || offset_y) {
     layer_move_to(g_mouse_layer, new_x, new_y);
+    // g_mouse_layer->x = new_x;
+    // g_mouse_layer->y = new_y;
+    // int w = g_mouse_layer->width;
+    // int h = g_mouse_layer->height;
+    // layers_draw_all(x, y, x + w, y + h, DRAW_GROUP_FLAG);
+    // layers_draw_all(new_x, new_y, new_x + w, new_y + h, 0);
   }
 
   // Check if any layer can receive the mouse event.

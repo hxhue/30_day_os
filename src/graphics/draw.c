@@ -374,13 +374,12 @@ void emit_draw_event(int x0, int y0, int x1, int y1, u8 flags) {
   draw_msg_t msg = {{x0, y0, x1, y1}, flags};
   int merge_flag = 0;
 
-  // u32 eflags = asm_load_eflags(); // Bit 9 contains interrupt permission.
-  asm_cli();                      // Clear interrupt permission.
+  asm_cli();     
 
   int status = draw_queue_push(&msg);
   if (status < 0) {
     merge_flag = 1;
-    xprintf("M0");
+    // xprintf("M0");
   } else {
     drawing_size += (x1 - x0) * (y1 - y0);
     if (drawing_size > g_boot_info.width * g_boot_info.height) {
@@ -395,58 +394,20 @@ void emit_draw_event(int x0, int y0, int x1, int y1, u8 flags) {
     drawing_size = g_boot_info.width * g_boot_info.height;
   }
 
-  // u32 size = queue_size(&draw_msg_queue);
-  
-  // asm_store_eflags(eflags);
   asm_sti();
-
-  // This is laggy...
-  // if (size > DRAW_MSG_QUEUE_URGENT_THRESHOLD) {
-  //   process_set_urgent(kernel_proc_node);
-  //   process_try_preempt();
-  //   xprintf("!");
-  // }
 }
 
-// int draw_event_queue_is_empty() {
-//   return queue_is_empty(&draw_msg_queue);
-// }
-
-// void draw_event_queue_consume() {
-//   draw_msg_t msg;
-//   queue_pop(&draw_msg_queue, &msg);
-//   int x0 = msg.region.x0;
-//   int y0 = msg.region.y0;
-//   int x1 = msg.region.x1;
-//   int y1 = msg.region.y1;
-//   xassert(x1 >= x0);
-//   xassert(y1 >= y0);
-//   drawing_size -= (x1 - x0) * (y1 - y0);
-//   xassert(drawing_size >= 0);
-
-//   // TODO: Experimenting
-//   drawing_size = 0;
-//   queue_clear(&draw_msg_queue);
-  
-//   asm_sti();
-
-//   // TODO: Experimenting
-//   // layers_draw_all(x0, y0, x1, y1, msg.flags);
-//   layers_draw_all(0, 0, g_boot_info.width, g_boot_info.height, 0);
-// }
-
-// event_queue_t g_draw_event_queue = {
-//   .empty = draw_event_queue_is_empty,
-//   .consume = draw_event_queue_consume
-// };
+int expriment_drawing_count = 0;
 
 void draw_main() {
   for (;;) {
-    if (queue_is_empty(&draw_msg_queue)) {
-      process_yield();
-    } else {
-      asm_cli();
+    // Mouse can still work.
+    stop_ts_count();
+    // asm_cli();
 
+    int size = queue_size(&draw_msg_queue);
+    while (size-- > 0) {
+      // u64 count = g_counter.count;
       draw_msg_t msg;
       queue_pop(&draw_msg_queue, &msg);
       int x0 = msg.region.x0;
@@ -459,15 +420,19 @@ void draw_main() {
       xassert(drawing_size >= 0);
 
       // TODO: Experimenting
-      drawing_size = 0;
-      queue_clear(&draw_msg_queue);
-      
-      asm_sti();
+      // drawing_size = 0;
+      // queue_clear(&draw_msg_queue);
+      // layers_draw_all(0, 0, g_boot_info.width, g_boot_info.height, 0);
 
-      // TODO: Experimenting
-      // layers_draw_all(x0, y0, x1, y1, msg.flags);
-      layers_draw_all(0, 0, g_boot_info.width, g_boot_info.height, 0);
+      layers_draw_all(x0, y0, x1, y1, msg.flags);
+
+      // xprintf("Draw count: %d\n", g_counter.count - count);
+      // expriment_drawing_count++;
+      // break;
     }
+    
+    // asm_sti();
+    resume_ts_count();
+    process_yield();
   }
-  asm_hlt();
 }

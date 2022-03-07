@@ -23,9 +23,13 @@
 #define SCHEDULER_QUEUE_OLD     2
 #define SCHEDULER_QUEUE_SIZE 1024
 
-#define DRAW_COUNT_MAX    20
+#define DRAW_COUNT_MAX         30
 static int ts_count_stop_flag = 0;
 static int draw_count_down = DRAW_COUNT_MAX;
+
+void reset_draw_count_down() {
+  draw_count_down = DRAW_COUNT_MAX;
+}
 
 typedef struct task_mgr_t {
   list_t queues[SCHEDULER_QUEUE_NUM]; // linked-lists of process_t *
@@ -191,9 +195,9 @@ int process_switch(int preempt) {
       else
         list_push_back(list, current_proc_node);
       
-      if (current_proc_node == kernel_proc_node) {
-        draw_count_down = DRAW_COUNT_MAX;
-      }
+      // if (current_proc_node == draw_proc_node) {
+      //   reset_draw_count_down();
+      // }
 
       current_proc_node = node;
       break;
@@ -227,15 +231,17 @@ void resume_ts_count() {
 }
 
 void process_count_time_slice() {
+  --draw_count_down;
+  
   if (ts_count_stop_flag) {
     return;
   }
   process_t *p = get_proc_from_node(current_proc_node);
   // xprintf("%s\n", __func__);
-  if (--draw_count_down <= 0) {
+  if (draw_count_down <= 0) {
     process_set_urgent(draw_proc_node);
     process_try_preempt();
-    draw_count_down = DRAW_COUNT_MAX;
+    reset_draw_count_down();
   } else if (p->flags & PROCFLAG_URGENT) {
     p->flags &= ~(PROCFLAG_URGENT);
     process_switch(0);
