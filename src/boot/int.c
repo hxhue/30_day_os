@@ -1,17 +1,13 @@
-#include "event/timer.h"
-#include "support/asm.h"
-#include "boot/def.h"
-#include "task/task.h"
-#include <boot/int.h>
-#include <event/mouse.h>
-#include <event/keyboard.h>
-#include <event/timer.h>
-#include <support/asm.h>
-#include <support/type.h>
-#include <support/debug.h>
-#include <string.h>
-#include <task/task.h>
 #include <boot/def.h>
+#include <boot/int.h>
+#include <event/keyboard.h>
+#include <event/mouse.h>
+#include <event/timer.h>
+#include <graphics/layer.h>
+#include <string.h>
+#include <support/asm.h>
+#include <support/debug.h>
+#include <support/type.h>
 #include <task/task.h>
 
 typedef struct gate_descriptor_t {
@@ -68,7 +64,20 @@ void int_handler0x20(u32 esp) {
 void int_handler0x21(u32 esp) {
   asm_out8(PIC0_OCW2, 0x60 + 0x1); /* Accept interrupt 0x1 */
   u32 data = asm_in8(PORT_KEYDAT);
-  emit_keyboard_event(data);
+
+  data = process_keycode(data);
+  
+  if (data) {
+    // emit_keyboard_event(data);
+    layer_t *top = layers_get_top();
+    if (top && top->proc_node) {
+      process_t *proc = get_proc_from_node(top->proc_node);
+      // xprintf("procname: %s\n", proc->name);
+      if (proc->event_mask & EVENTBIT_KEYBOARD) {
+        queue_push(&proc->keyboard_msg_queue, &data);
+      }
+    }
+  }
 }
 
 /* PS/2 mouse, 0x20 + 12 (mouse) = 0x2c. esp is the 32-bit stack register. */

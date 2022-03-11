@@ -34,9 +34,9 @@ struct layer_ctl_t {
 
   // Layers are sorted by "rank". Smaller ranked layers are drawn first
   // (background). rank == 0 means layer is not visible.
-  tree_t layers;
+  tree_t layers; // Stores pointers to layer_t
 
-  node_alloc_t tree_node_alloc;  // Stores pointers to layer_t
+  node_alloc_t tree_node_alloc;  
   node_alloc_t layer_info_alloc; 
 };
 
@@ -346,4 +346,11 @@ int layer_free(layer_t *layer) {
     focused_layer = NULL;
   }
   return 0;
+}
+
+layer_t *layers_get_top() {
+  tree_t *tree = &layerctl.layers;
+  void *key = tree_largest_key(tree);
+  key = tree_prev_key(tree, key); // Skip mouse cursor
+  return key ? *(layer_t **)key : NULL;
 }

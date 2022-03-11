@@ -50,7 +50,7 @@ struct process_t {
 	TSS32_t tss;
 	queue_t mouse_msg_queue; // queue of decoded_mouse_msg_t
 	queue_t timer_msg_queue; // queue of int (data of timer)
-	// queue_t layer_msg_queue; // queue of layer_msg_t
+	queue_t keyboard_msg_queue; // queue of int (keycode)
 };
 
 typedef list_node_t process_node_t;

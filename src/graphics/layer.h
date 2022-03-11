@@ -60,6 +60,8 @@ void layers_draw_all(int x0, int y0, int x1, int y1, u8 flags);
 // Receive mouse event
 void layers_receive_mouse_event(int x, int y, decoded_mouse_msg_t msg);
 
+layer_t *layers_get_top();
+
 #if (defined(__cplusplus))
 	}
 #endif

@@ -15,10 +15,71 @@ void init_keyboard_event_queue();
 void wait_kbdc_ready();
 void init_keyboard();
 
-typedef struct keyboard_listener_t {
-  void (*on_key_clicked)(int keycode);
-  void (*on_key_released)(int keycode);
-} keyboard_listener_t;
+// typedef struct keyboard_listener_t {
+//   void (*on_key_clicked)(int keycode);
+//   void (*on_key_released)(int keycode);
+// } keyboard_listener_t;
+
+// Processes the new byte and returns the result if there is one.
+// Since many keys are composed of multiple keycodes, process_keycode() may not
+// instantly returns a key, so 0 is returned instead. If the key is released, 
+// sign bit (31th bit of an int value) of the return value is set. 
+// This function is only used by PS/2 keyboard interruption handler.
+int process_keycode(int keycode);
+
+static inline int is_plain_key(int key) {
+  key &= 0x7fffffff;
+  return key >= 0 && key < 0x54 && g_keycode_table[key];
+}
+
+static inline int is_released_key(int key) {
+  return key & 0x80000000;
+}
+
+static inline int is_pressed_key(int key) {
+  return !is_released_key(key);
+}
+
+#define KEY_ESCAPE          0X01
+#define KEY_BACKSPACE       0X0E
+#define KEY_TAB             0X0F
+#define KEY_ENTER           0X1C
+#define KEY_LEFTCTRL        0X1D
+#define KEY_LEFTSHIFT       0X2A
+#define KEY_RIGHTSHIFT      0X36
+#define KEY_LEFTALT         0X38
+#define KEY_CAPSLOCK        0X3A
+#define KEY_F1              0X3B
+#define KEY_F2              0X3C
+#define KEY_F3              0X3D
+#define KEY_F4              0X3E
+#define KEY_F5              0X3F
+#define KEY_F6              0X40
+#define KEY_F7              0X41
+#define KEY_F8              0X42
+#define KEY_F9              0X43
+#define KEY_F10             0X44
+#define KEY_NUMLOCK         0X45
+#define KEY_SCROLLLOCK      0X46
+#define KEY_F11             0X57
+#define KEY_F12             0X58
+#define KEY_RIGHTALT        0XE038
+#define KEY_RIGHTCTRL       0XE01D
+#define KEY_INSERT          0XE052
+#define KEY_DELETE          0XE053
+#define KEY_LEFTARROW       0XE04B
+#define KEY_HOME            0XE047
+#define KEY_END             0XE04F
+#define KEY_UPARROW         0XE048
+#define KEY_DOWNARROW       0XE050
+#define KEY_PAGEUP          0XE049
+#define KEY_PAGEDOWN        0XE051
+#define KEY_RIGHTARROW      0XE04D
+#define KEY_KP_SLASH        0XE035 // KP is for keypad
+#define KEY_KP_ENTER        0XE01C
+
+#define KEY_PRTSC           0XE02A37
+#define KEY_PAUSE           0XE20000
 
 #if (defined(__cplusplus))
 }
