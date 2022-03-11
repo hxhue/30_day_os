@@ -58,7 +58,7 @@ process_t *get_proc_from_node(process_node_t *node) {
 
 static void init_kernel_proc() {
   // Create kernel task
-  process_t *p = process_new(9, "kernel");
+  process_t *p = process_new(9, "init");
   // Since the kernel process is the first process, it should be assigned
   // selector numbered KERNEL_GDT_SEL.
   xassert(p->sel == KERNEL_GDT_SEL);

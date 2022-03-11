@@ -83,7 +83,7 @@ void task_c_main() {
     draw_textbox(window_layer1, 8, 28, 144, 16, RGB_WHITE);
     char buf[64];
     snprintf(buf, 64, "%d", draw_queue_size());
-    draw_string(window_layer1, RGB_BLACK, 16, 28, buf);
+    draw_string(window_layer1, RGB_BLACK, 16, 28, buf, 1);
     // xprintf("\r%012d", queue_size(&draw_msg_queue));
 
     asm_hlt();

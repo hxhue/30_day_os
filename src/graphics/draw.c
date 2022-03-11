@@ -50,16 +50,16 @@ void init_background() {
   draw_rect(layer, RGB_WHITE,     w - 3,  h - 24, w - 2,  h - 2);
 
   draw_char(layer, RGB_WHITE, 0, 0, 'A');
-  draw_string(layer, RGB_AQUA, 24, 0, "Day 6: Hello, world!");
+  draw_string(layer, RGB_AQUA, 24, 0, "Day 6: Hello, world!", 1);
 
   u32 max_addr = get_max_mem_addr();
   u32 free_mem = get_avail_mem();
   char buf[64];
   sprintf(buf, "memory: %d MB, free: %d KB", max_addr / (1024 * 1024),
           free_mem / 1024);
-  draw_string(layer, RGB_WHITE, 0, 80, buf);
+  draw_string(layer, RGB_WHITE, 0, 80, buf, 1);
   sprintf(buf, "rand: %d", rand());
-  draw_string(layer, RGB_WHITE, 0, 96, buf);
+  draw_string(layer, RGB_WHITE, 0, 96, buf, 1);
 
   // layer->focusable = 0;
   layer_set_rank(layer, 1);
@@ -136,7 +136,7 @@ void redraw_window_title(layer_t *layer, const char *title, Color bgcolor) {
   int y = layer->y;
   int w = layer->width;
   draw_rect(layer, bgcolor, 3, 3, w - 3, 21);
-  draw_string(layer, RGB_WHITE, 24, 4, title);
+  draw_string(layer, RGB_WHITE, 24, 4, title, 1);
   draw_image(layer, &close_btn_image[0][0], CLOSE_BTN_IMAGE_WIDTH,
              CLOSE_BTN_IMAGE_HEIGHT, w - 21, 5);
   emit_draw_event(x, y, x + w, y + 21, 0);
@@ -192,9 +192,10 @@ void draw_char(layer_t *layer, Color color, int x0, int y0, char ch) {
 // - layer and color are valid
 // - x0 >= 0, y0 >= 0 (For performance)
 // - s is not empty and accessible
-void draw_string(layer_t *layer, Color color, int x0, int y0, const char *s) {
+void draw_string(layer_t *layer, Color color, int x0, int y0, const char *s,
+                 int space) {
   xassert(x0 >= 0 && y0 >= 0);
-  for (; *s; (void)++s, (void)(x0 += 8)) {
+  for (; *s; (void)++s, (void)(x0 += (8 + space))) {
     draw_char(layer, color, x0, y0, *s);
   }
 }

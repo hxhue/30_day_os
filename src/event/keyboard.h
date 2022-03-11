@@ -9,36 +9,12 @@ extern "C" {
 
 extern event_queue_t g_keyboard_event_queue;
 extern const char g_keycode_table[0x54];
+extern const char g_keycode_shift_table[0x54];
 
 void emit_keyboard_event(unsigned data);
 void init_keyboard_event_queue();
 void wait_kbdc_ready();
 void init_keyboard();
-
-// typedef struct keyboard_listener_t {
-//   void (*on_key_clicked)(int keycode);
-//   void (*on_key_released)(int keycode);
-// } keyboard_listener_t;
-
-// Processes the new byte and returns the result if there is one.
-// Since many keys are composed of multiple keycodes, process_keycode() may not
-// instantly returns a key, so 0 is returned instead. If the key is released, 
-// sign bit (31th bit of an int value) of the return value is set. 
-// This function is only used by PS/2 keyboard interruption handler.
-int process_keycode(int keycode);
-
-static inline int is_plain_key(int key) {
-  key &= 0x7fffffff;
-  return key >= 0 && key < 0x54 && g_keycode_table[key];
-}
-
-static inline int is_released_key(int key) {
-  return key & 0x80000000;
-}
-
-static inline int is_pressed_key(int key) {
-  return !is_released_key(key);
-}
 
 #define KEY_ESCAPE          0X01
 #define KEY_BACKSPACE       0X0E
@@ -80,6 +56,44 @@ static inline int is_pressed_key(int key) {
 
 #define KEY_PRTSC           0XE02A37
 #define KEY_PAUSE           0XE20000
+
+// Higher 8 bits are for flags.
+// Lower 24 bits are for key identities.
+#define KEY_RELEASE_FLAG    0X80000000
+#define KEY_CAPITAL_FLAG    0X40000000
+#define KEY_SHIFT_FLAG      0X20000000
+
+// Processes the new byte and returns the result if there is one.
+// Since many keys are composed of multiple keycodes, process_keycode() may not
+// instantly returns a key, so 0 is returned instead. If the key is released, 
+// sign bit (31th bit of an int value) of the return value is set. 
+// This function is only used by PS/2 keyboard interruption handler.
+int process_keycode(int keycode);
+
+static inline int is_plain_key(int key) {
+  key &= 0x00ffffff;
+  return key >= 0 && key < 0x54 && g_keycode_table[key];
+}
+
+// Returns the visible char represented by key when is_plain_key(key) == true.
+// Otherwise, 0 is returned. During translatoin, A capital flag toggles a
+// letter's case. A shift flag toggles the character's case when it's a letter
+// and replaces the character by looking up in the backup keycode table
+// otherwise. Other flags are ignored.
+char to_plain_char(int key);
+
+static inline int is_released_key(int key) {
+  return key & KEY_RELEASE_FLAG;
+}
+
+static inline int is_pressed_key(int key) {
+  return !is_released_key(key);
+}
+
+// Ignores all flags and only compares keys' identities.
+static inline int key_equal(int k1, int k2) {
+  return (k1 & 0x00ffffff) == (k2 & 0x00ffffff);
+}
 
 #if (defined(__cplusplus))
 }
