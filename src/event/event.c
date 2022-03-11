@@ -17,41 +17,28 @@
 #include <support/queue.h>
 
 // Now drawing task is separated.
-static event_queue_t *event_queues[] = {
-  &g_mouse_event_queue,
-  &g_keyboard_event_queue,
-  &g_timer_event_queue,
-};
+// static event_queue_t *event_queues[] = {
+//   &g_mouse_event_queue,
+//   // &g_keyboard_event_queue,
+//   &g_timer_event_queue,
+// };
 
 void prepare_event_loop() {
   init_mouse_event_queue();
-  init_keyboard_event_queue();
   init_draw_event_queue();
   init_timer_event_queue();
+  // init_keyboard_event_queue();
 }
+
+// TODO: 把计时器事件放在中断中直接处理。内核为用堆来管理计时器。
+//       而中断处理只放置最靠前的一批计时器。
 
 void event_loop() {
   for (;;) {
-    asm_cli();
-    // stop_ts_count();
-    
-    int queue_index = -1, i;
-    for (i = 0; i < sizeof(event_queues) / sizeof(event_queues[0]); ++i) {
-      if (!event_queues[i]->empty()) {
-        queue_index = i;
-        break;
-      }
-    }
-    
-    if (queue_index < 0) {
-      asm_sti();
-      // resume_ts_count(); // Put this into drawing functions
+    // Give up time slices when all event queues are empty.
+    if (check_mouse_events() && check_timer_events()) {
       process_yield();
-      continue;
     }
-
-    // asm_sti() is called inside the consume() function.
-    event_queues[queue_index]->consume();
   }
 }
 

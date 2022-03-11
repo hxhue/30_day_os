@@ -86,38 +86,38 @@ const char g_keycode_shift_table[0x54] = {
     0, ' ', 0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,    0,
     0, '7', '8', '9', '-', '4', '5', '6', '+', '1', '2', '3', '0',  '.'};
 
-void handle_event_keyboard_impl(unsigned keycode) {
-  // TODO: transfer data to process of focused window
-}
+// void handle_event_keyboard_impl(unsigned keycode) {
+//   // TODO: transfer data to process of focused window
+// }
 
 // TODO: remove keyboard_msg_queue
-static queue_t keyboard_msg_queue;
+// static queue_t keyboard_msg_queue;
 
-#define KEYBOARD_MSG_QUEUE_SIZE 512
+// #define KEYBOARD_MSG_QUEUE_SIZE 512
 
-void init_keyboard_event_queue() {
-  queue_init(&keyboard_msg_queue, sizeof(unsigned), KEYBOARD_MSG_QUEUE_SIZE,
-             alloc_mem2, reclaim_mem2);
-}
+// void init_keyboard_event_queue() {
+//   queue_init(&keyboard_msg_queue, sizeof(unsigned), KEYBOARD_MSG_QUEUE_SIZE,
+//              alloc_mem2, reclaim_mem2);
+// }
 
-void emit_keyboard_event(unsigned data) {
-  queue_push(&keyboard_msg_queue, &data);
-}
+// void emit_keyboard_event(unsigned data) {
+//   queue_push(&keyboard_msg_queue, &data);
+// }
 
-static int keyboard_event_queue_empty() {
-  return queue_is_empty(&keyboard_msg_queue);
-}
+// static int keyboard_event_queue_empty() {
+//   return queue_is_empty(&keyboard_msg_queue);
+// }
 
-static void keyboard_event_queue_consume() {
-  unsigned keycode;
-  queue_pop(&keyboard_msg_queue, &keycode);
-  asm_sti();
-  handle_event_keyboard_impl(keycode);
-}
+// static void keyboard_event_queue_consume() {
+//   unsigned keycode;
+//   queue_pop(&keyboard_msg_queue, &keycode);
+//   asm_sti();
+//   handle_event_keyboard_impl(keycode);
+// }
 
-event_queue_t g_keyboard_event_queue = {.empty = keyboard_event_queue_empty,
-                                        .consume =
-                                            keyboard_event_queue_consume};
+// event_queue_t g_keyboard_event_queue = {.empty = keyboard_event_queue_empty,
+//                                         .consume =
+//                                             keyboard_event_queue_consume};
 
 // Keyboard controller is slow so CPU has to wait.
 // But kbdc was fast when I tested it in Qemu.
@@ -142,6 +142,8 @@ void init_keyboard() {
 // TODO: PrtSc not working
 // TODO: Right shift not working
 // TODO: Pause not working
+
+// TODO: Control/Alt等修饰按键
 
 int process_keycode(int keycode) {
   static int keycode_mode = 0;

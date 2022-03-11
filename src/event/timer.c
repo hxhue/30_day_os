@@ -62,15 +62,32 @@ int timer_event_queue_empty() {
 // add_timer() cannot be called in a interrupt handler, so asm_sti() can be
 // called immediately.
 // TODO: move g_timer_event_queue abstraction
-void timer_event_queue_consume() {
-  asm_sti();
-  timer_t timer;
-  priority_queue_pop(&g_timer_queue, &timer);
-  queue_push(&get_proc_from_node(timer.pnode)->timer_msg_queue, &timer.data);
-  process_set_urgent(timer.pnode);
-}
+// void timer_event_queue_consume() {
+//   asm_sti();
+//   timer_t timer;
+//   priority_queue_pop(&g_timer_queue, &timer);
+//   queue_push(&get_proc_from_node(timer.pnode)->timer_msg_queue, &timer.data);
+//   process_set_urgent(timer.pnode);
+// }
 
-event_queue_t g_timer_event_queue = {
-    .empty = timer_event_queue_empty,
-    .consume = timer_event_queue_consume
-};
+// event_queue_t g_timer_event_queue = {
+//     .empty = timer_event_queue_empty,
+//     .consume = timer_event_queue_consume
+// };
+
+int check_timer_events() {
+  asm_cli();
+  int queue_empty =
+      priority_queue_is_empty(&g_timer_queue) ||
+      ((timer_t *)priority_queue_get_first(&g_timer_queue))->timeout >
+          g_counter.count;
+  asm_sti();
+  if (!queue_empty) {
+    timer_t timer;
+    priority_queue_pop(&g_timer_queue, &timer);
+    queue_push(&get_proc_from_node(timer.pnode)->timer_msg_queue, &timer.data);
+    process_set_urgent(timer.pnode);
+  }
+
+  return queue_empty;
+}

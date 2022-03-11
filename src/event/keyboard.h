@@ -7,12 +7,12 @@ extern "C" {
 
 #include <event/event.h>
 
-extern event_queue_t g_keyboard_event_queue;
+// extern event_queue_t g_keyboard_event_queue;
 extern const char g_keycode_table[0x54];
 extern const char g_keycode_shift_table[0x54];
 
-void emit_keyboard_event(unsigned data);
-void init_keyboard_event_queue();
+// void emit_keyboard_event(unsigned data);
+// void init_keyboard_event_queue();
 void wait_kbdc_ready();
 void init_keyboard();
 

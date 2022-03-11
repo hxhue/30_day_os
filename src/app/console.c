@@ -103,7 +103,8 @@ static void init_window(void) {
   int winw = TEXT_OFFSET_X * 2 + textw;
   int winh = TEXT_OFFSET_Y + 9 + texth;
   window_console = make_window(winw, winh, "Console");
-  layer_move_to(window_console, 300, 130);
+  layer_move_to(window_console, (g_boot_info.width - winw) / 2,
+                (g_boot_info.height - winh) / 2);
   draw_textbox(window_console, TEXT_OFFSET_X, TEXT_OFFSET_Y, textw, texth,
                RGB_BLACK);
   layer_bring_to_front(window_console);

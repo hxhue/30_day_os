@@ -91,18 +91,32 @@ void emit_mouse_event(mouse_msg_t msg) {
   queue_push(&g_mouse_msg_queue, &msg);
 }
 
-static int mouse_msg_queue_empty() {
-  return queue_is_empty(&g_mouse_msg_queue);
+// static int mouse_msg_queue_empty() {
+//   return queue_is_empty(&g_mouse_msg_queue);
+// }
+
+// static void mouse_msg_queue_consume() {
+//   mouse_msg_t msg;
+//   queue_pop(&g_mouse_msg_queue, &msg);
+//   asm_sti();
+//   handle_event_mouse_impl(msg);
+// }
+
+int check_mouse_events() {
+  asm_cli();
+  int empty = queue_is_empty(&g_mouse_msg_queue);
+  if (empty) {
+    asm_sti();
+  } else {
+    mouse_msg_t msg;
+    queue_pop(&g_mouse_msg_queue, &msg);
+    asm_sti();
+    handle_event_mouse_impl(msg);
+  }
+  return empty;
 }
 
-static void mouse_msg_queue_consume() {
-  mouse_msg_t msg;
-  queue_pop(&g_mouse_msg_queue, &msg);
-  asm_sti();
-  handle_event_mouse_impl(msg);
-}
-
-event_queue_t g_mouse_event_queue = {
-  .empty = mouse_msg_queue_empty,
-  .consume = mouse_msg_queue_consume
-};
+// event_queue_t g_mouse_event_queue = {
+//   .empty = mouse_msg_queue_empty,
+//   .consume = mouse_msg_queue_consume
+// };
