@@ -57,7 +57,7 @@ C_OBJS     := $(patsubst src/%.c,$(BUILD)/%.obj,$(C_SOURCES))
 NAS_SOURCES := $(shell $(FIND) src/ -mindepth 2 -name "*.nas")
 NAS_OBJS    := $(patsubst src/%.nas,$(BUILD)/%.obj,$(NAS_SOURCES))
 
-all : run
+all : $(QEMU_IMG)
 
 .PHONY: clean
 
