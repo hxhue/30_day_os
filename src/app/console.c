@@ -279,17 +279,16 @@ char *echo(int argc, char **argv) {
   char *result = alloc(len + 1); /* One more byte for '\0' */
   char *dst = result;
   for (i = 1; i < argc; ++i) {
+    if (i > 1) {
+      *dst++ = ' ';
+    }
     const char *src = argv[i];
     while (*src) {
       *dst++ = *src++;
     }
-    *dst++ = ' ';
   }
 
-  if (dst != result) {
-    dst[-1] = '\n';       /* Replace trailing ' ' with '\n' */
-  }
-
+  *dst++  = '\n';
   *dst++  = '\0';
   return result;
 }
