@@ -1,4 +1,5 @@
 #include "memory/memory.h"
+#include "graphics/draw.h"
 #include <boot/boot.h>
 #include <boot/gdt.h>
 #include <boot/int.h>
@@ -50,18 +51,43 @@ void console_drawchar(char ch, int cursor_x, int cursor_y) {
   draw_char(window_console, RGB_WHITE, x0, y0, ch);
 }
 
-// Scroll the console up "lines" lines.
-void console_scrollup(int lines) { xprintf("console_scrollup()\n"); }
+// Scroll the console up "lines" lines. Cursor is moved as well.
+// Returns the lines actually scrolled up.
+int console_scrollup(int lines) { 
+  xprintf("console_scrollup()\n"); 
 
-// Scroll the console down "lines" lines.
-void console_scrolldown(int lines) { xprintf("console_scrolldown()\n"); }
+  int textw = COLMAX * (CHARW + CHAR_RIGHT_MARGIN);
+  int winw = TEXT_OFFSET_X * 2 + textw;
+  int scroll_lines = 0;
+  for (; cursor_y > 0 && lines-- > 0; --cursor_y, ++scroll_lines) {
+    for (int i = 1; i < ROWMAX; ++i) {
+      int y0 = TEXT_OFFSET_Y + (i-1) * (CHARH + CHAR_BOTTOM_MARGIN);
+      int y1 = y0 + (CHARH + CHAR_BOTTOM_MARGIN);
+      const u8 *src = window_console->buf + winw * y1;
+      draw_image(window_console, src, winw, CHARH, 0, y0);
+    }
+    /* Last line */
+    int x = TEXT_OFFSET_X + 0 * (CHARW + CHAR_RIGHT_MARGIN);
+    int y = TEXT_OFFSET_Y + (ROWMAX - 1) * (CHARH + CHAR_BOTTOM_MARGIN);
+    draw_rect(window_console, RGB_BLACK, x, y, x + textw, y + CHARH);
+  }
+
+  return scroll_lines;
+}
+
+// Scroll the console down "lines" lines. Cursor is moved as well.
+// Returns the lines actually scrolled down.
+int console_scrolldown(int lines) {
+  xprintf("console_scrolldown()\n");
+  return 0;
+}
 
 void console_newline(void) {
   console_blink_cursor(0);
   cursor_x = 0;
   if (++cursor_y >= ROWMAX) {
     console_scrollup(1);
-    --cursor_y;
+    // --cursor_y; // console_scrollup() moves cursor.
   }
 }
 
@@ -78,7 +104,7 @@ void console_putchar(char ch) {
     }
     if (cursor_y >= ROWMAX) {
       console_scrollup(1);
-      cursor_y--;
+      // cursor_y--; // console_scrollup() moves cursor.
     }
   }
 }
@@ -127,12 +153,11 @@ void console_commit(void) {
   char *cmd = currentline;
   const char *result;
   currentline_pos = 0;
-  xprintf("[INFO] Executing: `%s`\n", cmd);
+  // xprintf("[INFO] Executing: `%s`\n", cmd);
   if ((result = shell_exec(cmd))) {
     console_putstr(result);
     reclaim((void *)result);
   } else {
-    // xprintf("[ERR ] Invalid command.\n");
     console_putstr("[ERR ] Invalid command.\n");
   }
   console_prompt();
