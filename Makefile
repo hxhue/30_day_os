@@ -42,7 +42,7 @@ FAT12IMG  := ruby $(BIN)/fat12img.rb
 # LD := ld
 
 C_FLAGS = -m32 -Isrc -Isrc/libc -nostdinc -std=c11 -static-libgcc -lgcc -O2 \
-					-Wall -ffreestanding
+					-Wall -ffreestanding -fdiagnostics-color -Werror
 
 QEMU_IMG  := $(BUILD)/os.img
 QEMU_RUN  := qemu-system-x86_64 -m 32 -rtc base=localtime -vga std \

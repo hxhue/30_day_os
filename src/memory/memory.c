@@ -111,7 +111,7 @@ void *alloc_mem(unsigned long size) {
   return (void *)0;
 }
 
-void *alloc_mem2(size_t size) {
+void *alloc(size_t size) {
   size_t *p = (size_t *)alloc_mem(size + sizeof(size_t));
   if (p) {
     *p = size;
@@ -120,7 +120,7 @@ void *alloc_mem2(size_t size) {
   return (void *)0;
 }
 
-void reclaim_mem2(void *addr) {
+void reclaim(void *addr) {
   if (addr != 0) {
     size_t *real_addr = (size_t *)addr - 1;
     reclaim_mem(real_addr, *real_addr);

@@ -36,7 +36,7 @@ int timer_greater(void *a, void *b) {
 
 void init_timer_event_queue() {
   priority_queue_init(&g_timer_queue, sizeof(timer_t), TIMER_QUEUE_SIZE,
-                      timer_swap, timer_greater, alloc_mem2, reclaim_mem2);
+                      timer_swap, timer_greater, alloc, reclaim);
 }
 
 // Requirements: callback != 0

@@ -47,7 +47,7 @@
 
 #define xprintf(fmt, ...)                                                      \
   do {                                                                         \
-    char buf[512];                                                             \
+    char buf[2048];                                                            \
     snprintf(buf, sizeof(buf), fmt, ##__VA_ARGS__);                            \
     debug_write_console(buf);                                                  \
   } while (0)

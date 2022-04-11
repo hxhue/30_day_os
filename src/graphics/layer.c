@@ -88,7 +88,7 @@ void init_layer_mgr() {
   mem = alloc_mem_4k(sz);
   xassert(mem);
   node_alloc_init(&layerctl.layer_info_alloc, mem, sz, sizeof(layer_t));
-  queue_init(&grouped_drawing_regions, sizeof(region_t), 32, alloc_mem2, reclaim_mem2);
+  queue_init(&grouped_drawing_regions, sizeof(region_t), 32, alloc, reclaim);
 }
 
 layer_t *layer_new(process_node_t *pnode, int width, int height, int x, int y,

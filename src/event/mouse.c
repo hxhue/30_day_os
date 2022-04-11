@@ -84,7 +84,7 @@ static queue_t g_mouse_msg_queue;
 
 void init_mouse_event_queue() {
   queue_init(&g_mouse_msg_queue, sizeof(mouse_msg_t), MOUSE_EVENT_QUEUE_SIZE,
-             alloc_mem2, reclaim_mem2);
+             alloc, reclaim);
 }
 
 void emit_mouse_event(mouse_msg_t msg) {

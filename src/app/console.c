@@ -1,3 +1,4 @@
+#include "memory/memory.h"
 #include <boot/boot.h>
 #include <boot/gdt.h>
 #include <boot/int.h>
@@ -14,11 +15,11 @@
 #include <support/priority_queue.h>
 #include <support/queue.h>
 #include <task/task.h>
+#include <ctype.h>
 
 // TODO: 打印之后窗口周围有残影，成行存在
 // TODO: Close button
 // TODO: 对control set 1中的所有按键的支持
-// TODO: 更宽的间距
 #define COLMAX               80
 #define ROWMAX               24
 #define CHARW                 8
@@ -28,14 +29,21 @@
 #define WINDOW_TITLE_HEIGHT  21
 #define CHAR_BOTTOM_MARGIN    3
 #define CHAR_RIGHT_MARGIN     1
-
+#define LINE_MAX_CHARNUM   2048
 #define TIMER_DATA_CURSOR_BLINK 1
 
 static layer_t *window_console;
 static int cursor_x = 0, cursor_y = 0;
-// static char window_buffer[2][COLMAX];
+static char currentline[LINE_MAX_CHARNUM];
+static int currentline_pos = 0;
 
-void console_putchar_at(char ch, int cursor_x, int cursor_y) {
+const char *shell_exec(const char *cmd);
+int shell_split(char *cmd, int *pargc, char ***pargv);
+char *echo(int argc, char **argv);
+void console_backspace(void);
+void console_blink_cursor(int visible);
+
+void console_drawchar(char ch, int cursor_x, int cursor_y) {
   int x0 = TEXT_OFFSET_X + cursor_x * (CHARW + CHAR_RIGHT_MARGIN);
   int y0 = TEXT_OFFSET_Y + cursor_y * (CHARH + CHAR_BOTTOM_MARGIN);
   draw_rect(window_console, RGB_BLACK, x0, y0, x0 + CHARW, y0 + CHARH);
@@ -48,31 +56,86 @@ void console_scrollup(int lines) { xprintf("console_scrollup()\n"); }
 // Scroll the console down "lines" lines.
 void console_scrolldown(int lines) { xprintf("console_scrolldown()\n"); }
 
-void console_putchar(char ch) {
-  console_putchar_at(ch, cursor_x++, cursor_y);
-  if (cursor_x >= COLMAX) {
-    cursor_x -= COLMAX;
-    cursor_y++;
-  }
-  if (cursor_y >= ROWMAX) {
+void console_newline(void) {
+  console_blink_cursor(0);
+  cursor_x = 0;
+  if (++cursor_y >= ROWMAX) {
     console_scrollup(1);
-    cursor_y--;
+    --cursor_y;
+  }
+}
+
+void console_putchar(char ch) {
+  if (ch == '\n') {
+    console_newline();
+  } else if (ch == '\b') {
+    console_backspace();
+  } else {
+    console_drawchar(ch, cursor_x++, cursor_y);
+    if (cursor_x >= COLMAX) {
+      cursor_x -= COLMAX;
+      cursor_y++;
+    }
+    if (cursor_y >= ROWMAX) {
+      console_scrollup(1);
+      cursor_y--;
+    }
+  }
+}
+
+void console_putstr(const char *s) {
+  const char *p;
+  for (p = s; *p; ++p) {
+    console_putchar(*p);
   }
 }
 
 void console_backspace(void) {
-  int x0 = TEXT_OFFSET_X + cursor_x * (CHARW + CHAR_RIGHT_MARGIN);
-  int y0 = TEXT_OFFSET_Y + cursor_y * (CHARH + CHAR_BOTTOM_MARGIN);
-  draw_rect(window_console, RGB_BLACK, x0, y0, x0 + CHARW, y0 + CHARH);
-  cursor_x--;
-  if (cursor_x < 0) {
-    cursor_x += COLMAX;
-    cursor_y--;
+  if (currentline_pos > 0) {
+    currentline_pos--;
+    int x0 = TEXT_OFFSET_X + cursor_x * (CHARW + CHAR_RIGHT_MARGIN);
+    int y0 = TEXT_OFFSET_Y + cursor_y * (CHARH + CHAR_BOTTOM_MARGIN);
+    draw_rect(window_console, RGB_BLACK, x0, y0, x0 + CHARW, y0 + CHARH);
+    cursor_x--;
+    if (cursor_x < 0) {
+      cursor_x += COLMAX;
+      cursor_y--;
+    }
+    if (cursor_y < 0) {
+      console_scrolldown(1);
+      cursor_y++;
+    }
   }
-  if (cursor_y < 0) {
-    console_scrolldown(1);
-    cursor_y++;
+}
+
+// Returns 0 only on success.
+int console_currentline_push(char ch) {
+  if (currentline_pos + 1 < LINE_MAX_CHARNUM) {
+    currentline[currentline_pos++] = ch;
+    return 0;
   }
+  return -1;
+}
+
+void console_prompt() {
+  console_putstr("> ");
+}
+
+void console_commit(void) {
+  currentline[currentline_pos] = '\0';
+  // size_t len = currentline_pos;
+  char *cmd = currentline;
+  const char *result;
+  currentline_pos = 0;
+  xprintf("[INFO] Executing: `%s`\n", cmd);
+  if ((result = shell_exec(cmd))) {
+    console_putstr(result);
+    reclaim((void *)result);
+  } else {
+    // xprintf("[ERR ] Invalid command.\n");
+    console_putstr("[ERR ] Invalid command.\n");
+  }
+  console_prompt();
 }
 
 void console_blink_cursor(int visible) {
@@ -121,6 +184,8 @@ void console_main(void) {
   int has_focus = 0;
 
   int cursor_is_visible = 0; // Toggle every 500 ms?
+
+  console_prompt();
 
   for (;;) {
     // Check events
@@ -171,12 +236,17 @@ void console_main(void) {
       if (is_pressed_key(key)) {
         char ch;
         if ((ch = to_plain_char(key))) {
-          console_putchar(ch);
-          xprintf("key: 0X%08X, char: %c\n", key, ch);
+          if (console_currentline_push(ch) == 0) {
+            console_putchar(ch);
+          }
+          // xprintf("key: 0X%08X, char: %c\n", key, ch);
         } else if (key_equal(key, KEY_BACKSPACE)) {
           console_backspace();
+        } else if (key_equal(key, KEY_ENTER)) {
+          // xprintf("Enter is pressed\n");
+          console_newline();
+          console_commit();
         }
-
       }
       // xprintf(">>> key: 0X%08X\n", key);
     }
@@ -198,4 +268,83 @@ void console_main(void) {
 
     asm_hlt();
   }
+}
+
+char *echo(int argc, char **argv) {
+  size_t len = 1;                /* One more byte for '\n' */
+  int i;
+  for (i = 1; i < argc; ++i) {
+    len += strlen(argv[i]) + 1;  /* One more byte for ' ' */
+  }
+  char *result = alloc(len + 1); /* One more byte for '\0' */
+  char *dst = result;
+  for (i = 1; i < argc; ++i) {
+    const char *src = argv[i];
+    while (*src) {
+      *dst++ = *src++;
+    }
+    *dst++ = ' ';
+  }
+
+  if (dst != result) {
+    dst[-1] = '\n';       /* Replace trailing ' ' with '\n' */
+  }
+
+  *dst++  = '\0';
+  return result;
+}
+
+// cmd:   Command to split. '\0' will be inserted between words.
+// argc:  shell_split() will store the argument count in argc.
+// argv:  shell_split() will store the pointer to argument vector in argv.
+//        Caller must use reclaim() to free the memory of argv.
+//        All pointers inside argv are originally from cmd. So cmd should not
+//        be freed when argv is being used.
+// Returns 0 if and only if no error happens.
+// TODO: Support "" and ''. (Now spaces are always splitting words.)
+int shell_split(char *cmd, int *pargc, char ***pargv) {
+  int argmax = 8;
+  int argc = 0;
+  char **argv = alloc(argmax * sizeof(char *));
+  while (*cmd) {
+    while (*cmd && isspace(*cmd)) {
+      *cmd++ = '\0';
+    }
+    if (*cmd) {
+      if (argc >= argmax) {
+        argmax <<= 1;
+        char **newargv = alloc(argmax * sizeof(char *));
+        memcpy(newargv, argv, argc * sizeof(char *));
+        reclaim(argv);
+        argv = newargv;
+      }
+      argv[argc++] = cmd;
+      while (*cmd && !isspace(*cmd)) {
+        cmd++;
+      }
+    }
+  }
+  *pargc = argc;
+  *pargv = argv;
+  return 0;
+}
+
+// Try executing cmd. If it succeeded, a dynamically allocated string is
+// returned (should be freed by reclaim()). Otherwise, NULL is returned.
+const char *shell_exec(const char *command) {
+  int argc; 
+  char **argv;
+  char *result = NULL;
+  char *cmd = strdup(command);
+  if (shell_split(cmd, &argc, &argv) == 0) {
+    if (argc == 0) {
+      result = alloc(1);
+      *result = '\0';
+    } else if (argc > 0 && strcmp("echo", argv[0]) == 0) {
+      result = echo(argc, argv);
+    }
+    reclaim(argv);
+  }
+  reclaim(cmd);
+  return result;
 }

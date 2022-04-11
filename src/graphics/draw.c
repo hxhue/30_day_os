@@ -360,7 +360,7 @@ int draw_queue_size() {
 // we can know when we should combine redrawing events.
 void init_draw_event_queue() {
   queue_init(&draw_msg_queue, sizeof(draw_msg_t), DRAW_MSG_QUEUE_SIZE,
-             alloc_mem2, reclaim_mem2);
+             alloc, reclaim);
 }
 
 static inline int draw_queue_push(const draw_msg_t *pmsg) {
