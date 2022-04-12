@@ -1,5 +1,6 @@
 #include "memory/memory.h"
 #include "graphics/draw.h"
+#include "string.h"
 #include <boot/boot.h>
 #include <boot/gdt.h>
 #include <boot/int.h>
@@ -38,8 +39,8 @@ static int cursor_x = 0, cursor_y = 0;
 static char currentline[LINE_MAX_CHARNUM];
 static int currentline_pos = 0;
 
-const char *shell_exec(const char *cmd);
-int shell_split(char *cmd, int *pargc, char ***pargv);
+int shell_exec(const char *command, char **presult);
+int shell_split(const char *cmd, int *pargc, char ***pargv);
 char *echo(int argc, char **argv);
 void console_backspace(void);
 void console_blink_cursor(int visible);
@@ -151,10 +152,11 @@ void console_commit(void) {
   currentline[currentline_pos] = '\0';
   // size_t len = currentline_pos;
   char *cmd = currentline;
-  const char *result;
   currentline_pos = 0;
   // xprintf("[INFO] Executing: `%s`\n", cmd);
-  if ((result = shell_exec(cmd))) {
+  char *result;
+  int status = shell_exec(cmd, &result);
+  if (status == 0) {
     console_putstr(result);
     reclaim((void *)result);
   } else {
@@ -318,6 +320,101 @@ char *echo(int argc, char **argv) {
   return result;
 }
 
+
+typedef enum ReadState {
+  NORMAL,
+  QUOTE_SINGLE,
+  QUOTE_DOUBLE,
+} ReadState;
+typedef struct string {
+  size_t size, capacity;
+  char *buf;
+} string;
+
+int strinit(string *s) {
+  s->size = 0;
+  s->capacity = 32;
+  s->buf = alloc(s->capacity);
+  if (!s->buf) {
+    return -1;
+  }
+  memset(s->buf, 0, s->capacity);
+  return 0;
+}
+
+int strpush(string *s, char ch) {
+  if (s->size + 1 >= s->capacity) { /* one more for '\0' */
+    s->capacity *= 2;
+    char *newbuf = alloc(s->capacity);
+    if (!newbuf) {
+      return -1;
+    }
+    memset(newbuf, 0, s->capacity);
+    memcpy(newbuf, s->buf, s->size);
+  }
+  s->buf[s->size] = ch;
+  s->size++;
+  return 0;
+}
+
+typedef struct argvec {
+  int argc, capacity;
+  char **argv;
+} argvec;
+
+int argvinit(argvec *p) {
+  p->argc = 0;
+  p->capacity = 8;
+  p->argv = alloc(p->capacity * sizeof(char *));
+  if (!p->argv) {
+    return -1;
+  }
+  memset(p->argv, 0, p->capacity * sizeof(char *));
+  return 0;
+}
+
+int argvpush(argvec *p, char *arg) {
+  if (p->argc + 1 >= p->capacity) { /* one more for '\0' */
+    p->capacity *= 2;
+    char *newbuf = alloc(p->capacity * sizeof(char *));
+    if (!newbuf) {
+      return -1;
+    }
+    memset(newbuf, 0, p->capacity * sizeof(char *));
+    memcpy(newbuf, p->argv, p->argc * sizeof(char *));
+  }
+  p->argv[p->argc] = arg;
+  p->argc++;
+  return 0;
+}
+
+void argvdestory(argvec *p) {
+  while (p->argc-- > 0) {
+    reclaim(p->argv[p->argc]);
+  }
+  reclaim(p->argv);
+  p->argv = NULL;
+}
+
+int strpop(string *s, char *ch) {
+  if (s->size == 0) {
+    return -1;
+  }
+  if (ch) {
+    *ch = s->buf[s->size - 1];
+  }
+  s->size--;
+  s->buf[s->size] = '\0';
+  return 0;
+}
+
+void strdestroy(string *s) {
+  if (s->buf) {
+    reclaim(s->buf);
+    s->buf = NULL;
+  }
+}
+
 // cmd:   Command to split. '\0' will be inserted between words.
 // argc:  shell_split() will store the argument count in argc.
 // argv:  shell_split() will store the pointer to argument vector in argv.
@@ -325,50 +422,105 @@ char *echo(int argc, char **argv) {
 //        All pointers inside argv are originally from cmd. So cmd should not
 //        be freed when argv is being used.
 // Returns 0 if and only if no error happens.
-// TODO: Support "" and ''. (Now spaces are always splitting words.)
-int shell_split(char *cmd, int *pargc, char ***pargv) {
-  int argmax = 8;
-  int argc = 0;
-  char **argv = alloc(argmax * sizeof(char *));
-  while (*cmd) {
-    while (*cmd && isspace(*cmd)) {
-      *cmd++ = '\0';
-    }
-    if (*cmd) {
-      if (argc >= argmax) {
-        argmax <<= 1;
-        char **newargv = alloc(argmax * sizeof(char *));
-        memcpy(newargv, argv, argc * sizeof(char *));
-        reclaim(argv);
-        argv = newargv;
+// TODO: Support "${key}" and '\?'.
+int shell_split(const char *cmd, int *pargc, char ***pargv) {
+  argvec args;
+  string word;
+  ReadState state = NORMAL;
+
+  strinit(&word);
+  argvinit(&args);
+
+  for (; *cmd; ++cmd) {
+    switch (state) {
+    case NORMAL: /* \-escape, $-escape */
+      switch (*cmd) {
+      case ' ':  case '\f': case '\n':
+      case '\r': case '\t': case '\v':
+        if (word.size > 0) {
+          argvpush(&args, word.buf);
+          strinit(&word);
+        }
+        break;
+      case '\"':
+        state = QUOTE_DOUBLE;
+        break;
+      case '\'':
+        state = QUOTE_SINGLE;
+        break;
+      default:
+        strpush(&word, *cmd);
+        break;
       }
-      argv[argc++] = cmd;
-      while (*cmd && !isspace(*cmd)) {
-        cmd++;
+      break;
+
+    case QUOTE_DOUBLE: /* \-escape, $-escape */
+      switch (*cmd) {
+      case '\"':
+        state = NORMAL;
+        break;
+      default:
+        strpush(&word, *cmd);
+        break;
       }
+      break;
+
+    case QUOTE_SINGLE: /* \-escape only */
+      switch (*cmd) {
+      case '\'':
+        state = NORMAL;
+        break;
+      default:
+        strpush(&word, *cmd);
+        break;
+      }
+      break;
     }
   }
-  *pargc = argc;
-  *pargv = argv;
-  return 0;
+
+  if (word.size > 0) {
+    argvpush(&args, word.buf);
+    strinit(&word);
+  }
+
+  if (state == NORMAL) {
+    *pargc = args.argc;
+    *pargv = args.argv;
+    return 0;
+  }
+  return 1; /* System is ok, but cmd is incomplete. */
 }
 
 // Try executing cmd. If it succeeded, a dynamically allocated string is
 // returned (should be freed by reclaim()). Otherwise, NULL is returned.
-const char *shell_exec(const char *command) {
+int shell_exec(const char *command, char **presult) {
   int argc; 
   char **argv;
   char *result = NULL;
   char *cmd = strdup(command);
-  if (shell_split(cmd, &argc, &argv) == 0) {
+
+  int status = shell_split(cmd, &argc, &argv);
+
+  if (status == 0) {
     if (argc == 0) {
       result = alloc(1);
       *result = '\0';
     } else if (argc > 0 && strcmp("echo", argv[0]) == 0) {
       result = echo(argc, argv);
+    } else {
+      result = strdup("Invalid command.\n");
     }
-    reclaim(argv);
+    /* destroy argv */
+    argvec args = {
+      .argc = argc,
+      .argv = argv,
+      .capacity = argc
+    };
+    argvdestory(&args);
+  } else {
+    
   }
   reclaim(cmd);
-  return result;
+  *presult = result;
+  return status;
 }
