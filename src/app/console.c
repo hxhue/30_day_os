@@ -1,9 +1,7 @@
-#include "memory/memory.h"
-#include "graphics/draw.h"
-#include "string.h"
 #include <boot/boot.h>
 #include <boot/gdt.h>
 #include <boot/int.h>
+#include <ctype.h>
 #include <event/event.h>
 #include <event/keyboard.h>
 #include <event/mouse.h>
@@ -12,12 +10,12 @@
 #include <graphics/layer.h>
 #include <memory/memory.h>
 #include <stdlib.h>
+#include <string.h>
 #include <support/asm.h>
 #include <support/debug.h>
 #include <support/priority_queue.h>
 #include <support/queue.h>
 #include <task/task.h>
-#include <ctype.h>
 
 // TODO: 打印之后窗口周围有残影，成行存在
 // TODO: Close button
@@ -55,7 +53,7 @@ void console_drawchar(char ch, int cursor_x, int cursor_y) {
 // Scroll the console up "lines" lines. Cursor is moved as well.
 // Returns the lines actually scrolled up.
 int console_scrollup(int lines) { 
-  xprintf("console_scrollup()\n"); 
+  xprintf("console_scrollup()\n");
 
   int textw = COLMAX * (CHARW + CHAR_RIGHT_MARGIN);
   int winw = TEXT_OFFSET_X * 2 + textw;
@@ -160,7 +158,7 @@ void console_commit(void) {
     console_putstr(result);
     reclaim((void *)result);
   } else {
-    console_putstr("[ERR ] Invalid command.\n");
+    console_putstr("Invalid input: Parsing failed.\n");
   }
   console_prompt();
 }
@@ -508,7 +506,7 @@ int shell_exec(const char *command, char **presult) {
     } else if (argc > 0 && strcmp("echo", argv[0]) == 0) {
       result = echo(argc, argv);
     } else {
-      result = strdup("Invalid command.\n");
+      result = strdup("Invalid command: Unknown arg[0].\n");
     }
     /* destroy argv */
     argvec args = {

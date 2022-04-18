@@ -1,11 +1,10 @@
-#include "memory/memory.h"
 #include <memory/memory.h>
 #include <stddef.h>
 #include <support/asm.h>
 #include <support/debug.h>
 #include <support/type.h>
 
-#define EFLAGS_AC_BIT 0x00040000
+#define EFLAGS_AC_BIT     0x00040000
 #define CR0_CACHE_DISABLE 0x60000000
 
 #define MEM_SET_ENTRIES 4096
