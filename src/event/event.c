@@ -15,6 +15,7 @@
 #include <support/asm.h>
 #include <support/type.h>
 #include <support/queue.h>
+#include <support/debug.h>
 
 // Now drawing task is separated.
 // static event_queue_t *event_queues[] = {

@@ -2,6 +2,7 @@
 # - qemu-system-x86_64
 # - gcc  (gcc.exe (Rev5, Built by MSYS2 project) 11.2.0)
 # - nasm (NASM version 2.15.05 compiled on Oct 24 2020)
+# - MSYS2 bash. cmd.exe won't work
 
 # About incremental make:
 # If dependencies change, `make clean` should be called manually.
@@ -41,13 +42,13 @@ FAT12IMG  := ruby $(BIN)/fat12img.rb
 # LD := $(BIN)\i386-elf-binutils\bin\i386-elf-ld.exe -m elf_i386
 # LD := ld
 
-C_FLAGS = -m32 -Isrc -Isrc/libc -nostdinc -std=c11 -static-libgcc -lgcc -O2 \
+C_FLAGS = -m32 -Isrc -Isrc/libc -nostdinc -std=c11 -static-libgcc -lgcc -O0 \
 					-Wall -ffreestanding -fdiagnostics-color -Werror
 
 QEMU_IMG  := $(BUILD)/os.img
 QEMU_RUN  := qemu-system-x86_64 -m 32 -rtc base=localtime -vga std \
 	-drive "file=$(QEMU_IMG),format=raw,if=floppy" -serial stdio --no-reboot \
-	-accel whpx,kernel-irqchip=off
+	#-accel whpx,kernel-irqchip=off
 
 # Get all C files in src/*/*
 C_SOURCES  := $(shell $(FIND) src/ -mindepth 2 -name "*.c")
